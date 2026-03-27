@@ -1,0 +1,43 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: "default"
+  group_by: ["alertname", "building", "severity"]
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - match:
+        severity: critical
+      receiver: "critical-handler"
+      continue: true
+    - match:
+        severity: warning
+      receiver: "warning-handler"
+
+receivers:
+  - name: default
+    webhook_configs:
+      - url: "http://spirit:9105/webhook/prometheus"
+        send_resolved: true
+  - name: critical-handler
+    webhook_configs:
+      - url: "http://spirit:9105/webhook/prometheus/critical"
+        send_resolved: true
+  - name: warning-handler
+    webhook_configs:
+      - url: "http://spirit:9105/webhook/prometheus/warning"
+        send_resolved: true
+
+inhibit_rules:
+  - source_match:
+      severity: "critical"
+    target_match:
+      severity: "warning"
+    equal: ["alertname", "building"]
+  - source_match:
+      category: "availability"
+    target_match_re:
+      category: "(performance|capacity|stability)"
+    equal: ["building"]

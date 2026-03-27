@@ -1,0 +1,42 @@
+# City of Light -- OpenFang Agent OS Configuration
+# TRL4 Lab Deployment: wera-ss-pt-sn-1
+# LLM: local llama.cpp (Qwen 3.4B Q4_K_M) via OpenAI-compatible API
+
+home_dir = "/data"
+data_dir = "/data/state"
+log_level = "info"
+api_listen = "0.0.0.0:4200"
+network_enabled = false
+api_key = ""
+mode = "default"
+language = "en"
+usage_footer = "tokens"
+
+# Local LLM via llama.cpp OpenAI-compatible endpoint
+[default_model]
+provider = "vllm"
+model = "default.gguf"
+api_key_env = "VLLM_API_KEY"
+
+[provider_urls]
+vllm = "http://llama-cpp:8081/v1"
+
+# No cloud fallback at TRL4 -- local inference only
+# Uncomment for hybrid mode:
+# [[fallback_providers]]
+# provider = "groq"
+# model = "llama-3.3-70b-versatile"
+# api_key_env = "GROQ_API_KEY"
+
+[memory]
+embedding_model = "all-MiniLM-L6-v2"
+consolidation_threshold = 10000
+decay_rate = 0.08
+
+[web]
+search_provider = "auto"
+cache_ttl_minutes = 15
+
+[a2a]
+enabled = false
+listen_path = "/a2a"

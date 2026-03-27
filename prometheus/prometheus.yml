@@ -1,0 +1,86 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    city: "wera-ss-pt-sn-1"
+    realm: "digital_land"
+    environment: "production"
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["host.docker.internal:9100"]
+        labels:
+          building: "real_land"
+          type: "infrastructure"
+          service: "host_metrics"
+
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]
+        labels:
+          building: "digital_land"
+          type: "containers"
+          service: "container_metrics"
+
+  - job_name: "spirit"
+    metrics_path: /metrics
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["spirit:9105"]
+        labels:
+          building: "spirit"
+          type: "agent"
+          service: "heartbeat"
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          building: "library"
+          type: "monitoring"
+          service: "prometheus"
+
+  - job_name: "alertmanager"
+    static_configs:
+      - targets: ["alertmanager:9093"]
+        labels:
+          building: "library"
+          type: "alerting"
+          service: "alertmanager"
+
+  - job_name: "rundeck"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["rundeck:4440"]
+        labels:
+          building: "factory"
+          type: "automation"
+          service: "rundeck"
+
+  # Nextcloud does not expose native Prometheus metrics.
+  # For production, add a dedicated exporter such as:
+  #   https://github.com/xperimental/nextcloud-exporter
+  # Spirit monitors Nextcloud reachability via its heartbeat checks.
+
+  # FilantropiaSolar ml-service (filantropia-ml:8501) is reachable on
+  # city_internal but does not expose Prometheus metrics.
+  # Monitor via Spirit HTTP checks or a blackbox exporter.
+
+  - job_name: "llama-cpp"
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    static_configs:
+      - targets: ["llama-cpp:8081"]
+        labels:
+          building: "university"
+          type: "inference"
+          service: "llm"

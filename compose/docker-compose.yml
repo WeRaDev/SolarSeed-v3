@@ -1,0 +1,256 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: city-postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cityoflight}
+      POSTGRES_USER: ${POSTGRES_USER:-citydb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-citydb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - city_internal
+
+  openfang:
+    build:
+      context: ../openfang
+      dockerfile: Dockerfile
+    container_name: city-openfang
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      OPENFANG_HOME: /data
+      RUST_LOG: ${OPENFANG_LOG_LEVEL:-info}
+    ports:
+      - "4200:4200"
+    volumes:
+      - openfang_data:/data
+      - ../openfang/config.toml:/data/config.toml:ro
+      - ../openfang/agents:/data/agents:ro
+    depends_on:
+      spirit:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4200/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - city_internal
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: city-prometheus
+    restart: unless-stopped
+    volumes:
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-30d}
+      - --web.enable-lifecycle
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:9090/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - city_internal
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: city-alertmanager
+    restart: unless-stopped
+    volumes:
+      - ../alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    ports:
+      - "9093:9093"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:9093/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - city_internal
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: city-node-exporter
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($|/)
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: city-cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - city_internal
+
+  rundeck:
+    image: rundeck/rundeck:5.19.0
+    container_name: city-rundeck
+    restart: unless-stopped
+    ports:
+      - "4440:4440"
+    env_file:
+      - .env
+    environment:
+      RUNDECK_GRAILS_URL: ${RUNDECK_GRAILS_URL:-http://localhost:4440}
+      RUNDECK_DATABASE_DRIVER: org.postgresql.Driver
+      RUNDECK_DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-cityoflight}
+      RUNDECK_DATABASE_USERNAME: ${POSTGRES_USER:-citydb}
+      RUNDECK_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      RUNDECK_SECURITY_ROLE_ADMIN: admin
+      RUNDECK_SECURITY_ROLE_USER: user
+      RUNDECK_ADMIN_PASSWORD: ${RUNDECK_ADMIN_PASSWORD}
+    volumes:
+      - rundeck_data:/home/rundeck/server/data
+      - ../rundeck/config:/home/rundeck/config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4440/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - city_internal
+
+  llama-cpp:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    container_name: city-llama-cpp
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    volumes:
+      - /data/models:/models:ro
+    command:
+      - "-m"
+      - "${LLAMA_MODEL:-/models/qwen3-4b-q5_k_m.gguf}"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8081"
+      - "--threads"
+      - "${LLAMA_THREADS:-8}"
+      - "--ctx-size"
+      - "${LLAMA_CTX_SIZE:-4096}"
+      - "--parallel"
+      - "4"
+    deploy:
+      resources:
+        limits:
+          memory: 12G
+        reservations:
+          memory: 8G
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/health || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    profiles:
+      - university
+    networks:
+      - city_internal
+
+  spirit:
+    build:
+      context: ../spirit
+    container_name: city-spirit
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SPIRIT_MEMORY_DIR: /app/memory
+      SPIRIT_LOG_DIR: /app/logs
+      PROMETHEUS_URL: http://prometheus:9090
+      RUNDECK_URL: http://rundeck:4440
+      SPIRIT_LLM_ENDPOINT: ${SPIRIT_LLM_ENDPOINT:-http://llama-cpp:8081}
+      SPIRIT_LLM_ENABLED: ${SPIRIT_LLM_ENABLED:-false}
+      SPIRIT_LLM_TIMEOUT: ${SPIRIT_LLM_TIMEOUT:-60}
+      SPIRIT_LLM_MAX_TOKENS: ${SPIRIT_LLM_MAX_TOKENS:-512}
+      SPIRIT_HTTP_PROBES: ${SPIRIT_HTTP_PROBES:-nextcloud=http://filantropia-nextcloud:80}
+    volumes:
+      - spirit_memory:/app/memory
+      - spirit_logs:/app/logs
+      - ../spirit/HEARTBEAT.md:/app/HEARTBEAT.md:ro
+      - ../spirit/RULES.md:/app/RULES.md:ro
+    ports:
+      - "9105:9105"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9105/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - city_internal
+
+  # Nextcloud (Fortress) is managed externally by the FilantropiaSolar compose stack.
+  # Connect it to city_internal at runtime:
+  #   docker network connect compose_city_internal filantropia-nextcloud
+  #   docker network connect compose_city_internal filantropia-ml
+  # Prometheus scrapes filantropia-nextcloud:80 on city_internal.
+  # ML service is available at filantropia-ml:8501 on city_internal.
+
+networks:
+  city_internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  prometheus_data:
+  alertmanager_data:
+  postgres_data:
+  rundeck_data:
+  spirit_memory:
+  spirit_logs:
+  openfang_data:

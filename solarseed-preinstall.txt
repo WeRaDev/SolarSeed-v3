@@ -1,0 +1,160 @@
+﻿== Timestamp ==
+2026-03-06T12:42:31
+== OS ==
+
+Host Name:                 COMPUTER
+OS Name:                   Microsoft Windows 10 Enterprise 2016 LTSB
+OS Version:                10.0.14393 N/A Build 14393
+OS Manufacturer:           Microsoft Corporation
+OS Configuration:          Standalone Workstation
+OS Build Type:             Multiprocessor Free
+Registered Owner:          Пользователь Windows
+Registered Organization:   
+Product ID:                00378-20000-00003-AA955
+Original Install Date:     8/30/2019, 5:13:09 PM
+System Boot Time:          3/6/2026, 12:01:08 PM
+System Manufacturer:       Gigabyte Technology Co., Ltd.
+System Model:              B85M-D2V
+System Type:               x64-based PC
+Processor(s):              1 Processor(s) Installed.
+                           [01]: Intel64 Family 6 Model 60 Stepping 3 GenuineIntel ~800 Mhz
+BIOS Version:              American Megatrends Inc. FB, 4/17/2014
+Windows Directory:         C:\Windows
+System Directory:          C:\Windows\system32
+Boot Device:               \Device\HarddiskVolume1
+System Locale:             en-us;English (United States)
+Input Locale:              en-us;English (United States)
+Time Zone:                 (UTC+00:00) Dublin, Edinburgh, Lisbon, London
+Total Physical Memory:     8,061 MB
+Available Physical Memory: 6,927 MB
+Virtual Memory: Max Size:  9,341 MB
+Virtual Memory: Available: 8,235 MB
+Virtual Memory: In Use:    1,106 MB
+Page File Location(s):     C:\pagefile.sys
+Domain:                    WORKGROUP
+Logon Server:              \\COMPUTER
+Hotfix(s):                 15 Hotfix(s) Installed.
+                           [01]: KB3186568
+                           [02]: KB3186601
+                           [03]: KB4023834
+                           [04]: KB4033631
+                           [05]: KB4049411
+                           [06]: KB4486129
+                           [07]: KB4509091
+                           [08]: KB4512574
+                           [09]: KB4535680
+                           [10]: KB4540723
+                           [11]: KB4576750
+                           [12]: KB4577586
+                           [13]: KB4589210
+                           [14]: KB5001078
+                           [15]: KB4586830
+Network Card(s):           3 NIC(s) Installed.
+                           [01]: Realtek PCIe GBE Family Controller
+                                 Connection Name: Ethernet
+                                 Status:          Media disconnected
+                           [02]: Atheros AR9271 Wireless Network Adapter
+                                 Connection Name: Беспроводная сеть
+                                 DHCP Enabled:    Yes
+                                 DHCP Server:     192.168.1.254
+                                 IP address(es)
+                                 [01]: 192.168.1.71
+                           [03]: TAP-Windows Adapter V9
+                                 Connection Name: Ethernet 2
+                                 Status:          Media disconnected
+Hyper-V Requirements:      VM Monitor Mode Extensions: Yes
+                           Virtualization Enabled In Firmware: Yes
+                           Second Level Address Translation: Yes
+                           Data Execution Prevention Available: Yes
+== CPU ==
+
+
+Name                      : Intel(R) Core(TM) i5-4430 CPU @ 3.00GHz
+Manufacturer              : GenuineIntel
+NumberOfCores             : 4
+NumberOfLogicalProcessors : 4
+MaxClockSpeed             : 3001
+
+
+
+== RAM ==
+
+
+TotalPhysicalMemory : 8452681728
+
+
+
+== Disks (model/serial/size) ==
+
+Index Model              SerialNumber                  Size InterfaceType MediaType            
+----- -----              ------------                  ---- ------------- ---------            
+    0 ST1000DM003-1ER162             Z4Y0CBCQ 1000202273280 IDE           Fixed hard disk media
+
+
+== Partitions/Volumes ==
+
+DeviceID VolumeName FileSystem         Size    FreeSpace
+-------- ---------- ----------         ----    ---------
+C:                  NTFS       104332259328   2463907840
+D:       Data2      NTFS       323088281600  13684924416
+E:       recovery   NTFS        47968153600  21008928768
+F:       Data3      NTFS       104856547328 103222132736
+G:       Data1      NTFS       419430395904  42244919296
+H:                                                      
+
+
+== Network adapters (MAC) ==
+
+Name              InterfaceDescription                    Status       LinkSpeed MacAddress       
+----              --------------------                    ------       --------- ----------       
+Ethernet          Realtek PCIe GBE Family Controller      Disconnected 0 bps     74-D4-35-D6-33-95
+Беспроводная сеть Atheros AR9271 Wireless Network Adapter Up           65 Mbps   C0-4A-00-28-B3-FB
+Ethernet 2        TAP-Windows Adapter V9                  Disconnected 100 Mbps  00-FF-F2-94-33-F3
+
+
+== IP config (includes gateway + DNS) ==
+
+Windows IP Configuration
+
+   Host Name . . . . . . . . . . . . : Computer
+   Primary Dns Suffix  . . . . . . . : 
+   Node Type . . . . . . . . . . . . : Hybrid
+   IP Routing Enabled. . . . . . . . : No
+   WINS Proxy Enabled. . . . . . . . : No
+   DNS Suffix Search List. . . . . . : Home
+
+Ethernet adapter Ethernet:
+
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . : 
+   Description . . . . . . . . . . . : Realtek PCIe GBE Family Controller
+   Physical Address. . . . . . . . . : 74-D4-35-D6-33-95
+   DHCP Enabled. . . . . . . . . . . : Yes
+   Autoconfiguration Enabled . . . . : Yes
+
+Ethernet adapter Ethernet 2:
+
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . : 
+   Description . . . . . . . . . . . : TAP-Windows Adapter V9
+   Physical Address. . . . . . . . . : 00-FF-F2-94-33-F3
+   DHCP Enabled. . . . . . . . . . . : Yes
+   Autoconfiguration Enabled . . . . : Yes
+
+Wireless LAN adapter Беспроводная сеть:
+
+   Connection-specific DNS Suffix  . : Home
+   Description . . . . . . . . . . . : Atheros AR9271 Wireless Network Adapter
+   Physical Address. . . . . . . . . : C0-4A-00-28-B3-FB
+   DHCP Enabled. . . . . . . . . . . : Yes
+   Autoconfiguration Enabled . . . . : Yes
+   IPv4 Address. . . . . . . . . . . : 192.168.1.71(Preferred) 
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+   Lease Obtained. . . . . . . . . . : Friday, March 6, 2026 12:02:11 PM
+   Lease Expires . . . . . . . . . . : Friday, March 6, 2026 1:32:12 PM
+   Default Gateway . . . . . . . . . : 192.168.1.254
+   DHCP Server . . . . . . . . . . . : 192.168.1.254
+   DNS Servers . . . . . . . . . . . : 192.168.1.254
+   NetBIOS over Tcpip. . . . . . . . : Enabled
+== UEFI / Secure Boot (may error on legacy BIOS) ==
+SecureBoot: unavailable (likely legacy BIOS or not supported)

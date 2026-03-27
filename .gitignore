@@ -1,0 +1,33 @@
+# Local env / secrets
+compose/.env
+
+# LLM weights
+models/
+
+# Spirit runtime state (mounted volumes)
+spirit/memory/
+spirit/logs/
+
+# Node.js
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Build artifacts
+dist/
+build/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/

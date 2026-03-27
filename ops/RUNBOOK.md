@@ -1,0 +1,75 @@
+# SolarSeed v3.1 — RUNBOOK
+
+## Routine health checks
+- Container status:
+  - `docker compose -f compose/docker-compose.yml ps`
+- Resource usage:
+  - `docker stats --no-stream`
+- Prometheus target health:
+  - `curl -s http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | {job: .labels.job, health: .health}'`
+- Spirit health + approvals queue:
+  - `curl -s http://localhost:9105/health | jq .`
+  - `curl -s http://localhost:9105/approvals | jq .`
+- Spirit self-reflection (when LLM enabled):
+  - `curl -s http://localhost:9105/api/v1/reflection | jq .`
+- OpenFang daemon health:
+  - `curl -s http://localhost:4200/api/health | jq .`
+
+## Incident triage
+1. Check which building is down:
+   - `curl -s http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | select(.health!="up")'`
+2. Review Spirit decisions:
+   - `docker compose -f compose/docker-compose.yml logs spirit | grep -E '(heartbeat_complete|alert_received|action_proposed|action_approved)'`
+3. Validate Alertmanager routing:
+   - `curl -s http://localhost:9093/api/v2/status | jq .`
+4. Validate OpenFang API:
+   - `curl -s http://localhost:4200/api/agents | jq .`
+
+## Safe restart patterns
+- Restart one service:
+  - `docker compose -f compose/docker-compose.yml restart <service>`
+- Restart monitoring stack:
+  - `docker compose -f compose/docker-compose.yml restart prometheus alertmanager node-exporter cadvisor spirit`
+- Restart agency layer:
+  - `docker compose -f compose/docker-compose.yml restart openfang`
+
+## Updates
+1. Pull upstream images:
+   - `docker compose -f compose/docker-compose.yml pull`
+2. Rebuild Spirit if code changed:
+   - `docker compose -f compose/docker-compose.yml build spirit`
+3. Rebuild OpenFang runtime if version pin changed:
+   - `docker compose -f compose/docker-compose.yml build openfang`
+4. Apply update:
+   - `docker compose -f compose/docker-compose.yml up -d`
+5. Validate:
+   - `docker compose -f compose/docker-compose.yml ps`
+   - `curl -s http://localhost:9105/health | jq .`
+   - `curl -s http://localhost:4200/api/health | jq .`
+
+## OpenFang Personas bootstrap
+The API expects `manifest_toml` (inline TOML content) in the JSON body. Helper to spawn from a manifest file:
+```
+MANIFEST=$(cat <path-to-agent.toml>)
+curl -s -X POST http://localhost:4200/api/agents \
+  -H "Content-Type: application/json" \
+  -d "$(python3 -c "import json,sys; print(json.dumps({'manifest_toml': sys.stdin.read()}))" <<< "$MANIFEST")"
+```
+- Spawn all Spirit personas from project manifests:
+  - `for a in spirit-orchestrator spirit-observer spirit-reflector; do M=$(cat openfang/agents/$a/agent.toml); curl -s -X POST http://localhost:4200/api/agents -H "Content-Type: application/json" -d "$(python3 -c "import json,sys; print(json.dumps({'manifest_toml': sys.stdin.read()}))" <<< "$M")"; echo; done`
+- List running personas:
+  - `curl -s http://localhost:4200/api/agents | jq '.[].name'`
+
+## Optional University building
+- Start llama.cpp only when needed:
+  - `docker compose -f compose/docker-compose.yml --profile university up -d llama-cpp`
+- Stop optional LLM service:
+  - `docker compose -f compose/docker-compose.yml --profile university stop llama-cpp`
+
+## Fortress integration checklist
+- Nextcloud reachable: `http://localhost:8080`
+- Nextcloud AIO admin UI reachable: `https://localhost:8443`
+- FilantropiaSolar app enabled in Nextcloud and configured with:
+  - Prometheus endpoint: `http://prometheus:9090`
+  - Spirit endpoint: `http://spirit:9105`
+  - Rundeck endpoint: `http://rundeck:4440`

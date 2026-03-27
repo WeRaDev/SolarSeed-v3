@@ -1,0 +1,108 @@
+groups:
+  - name: infrastructure_health
+    interval: 30s
+    rules:
+      - alert: HighDiskUsage
+        expr: (1 - (node_filesystem_avail_bytes{mountpoint="/data"} / node_filesystem_size_bytes{mountpoint="/data"})) > 0.90
+        for: 5m
+        labels:
+          severity: critical
+          building: real_land
+          category: capacity
+        annotations:
+          summary: "Data disk usage above 90%"
+          description: "Disk usage on /data is above 90%."
+          action: "Review /data/backups and /data/docker-volumes for cleanup."
+
+      - alert: MemoryPressure
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.90
+        for: 3m
+        labels:
+          severity: warning
+          building: real_land
+          category: capacity
+        annotations:
+          summary: "Memory usage above 90%"
+          description: "System memory pressure is sustained above 90%."
+          action: "Inspect memory-heavy containers and scale down optional services."
+
+  - name: container_health
+    interval: 30s
+    rules:
+      - alert: ContainerMonitoringDown
+        expr: up{job="cadvisor"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          building: digital_land
+          category: availability
+        annotations:
+          summary: "Container monitoring is offline"
+          description: "cAdvisor target is down."
+          action: "Restart cAdvisor and verify Docker daemon health."
+
+  - name: spirit_health
+    interval: 60s
+    rules:
+      - alert: SpiritHeartbeatMissing
+        expr: up{job="spirit"} == 0
+        for: 10m
+        labels:
+          severity: critical
+          building: spirit
+          category: availability
+        annotations:
+          summary: "Spirit heartbeat lost"
+          description: "Spirit has not been reachable for 10 minutes."
+          action: "Restart Spirit and inspect logs."
+
+      - alert: SpiritHighErrorRate
+        expr: rate(spirit_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          building: spirit
+          category: stability
+        annotations:
+          summary: "Spirit error rate elevated"
+          description: "Spirit error rate is elevated over the last 5 minutes."
+          action: "Review Spirit logs and Prometheus connectivity."
+
+  - name: building_availability
+    interval: 30s
+    rules:
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          building: library
+          category: monitoring
+        annotations:
+          summary: "Prometheus is down"
+          description: "Library (Prometheus) is unavailable."
+          action: "Restart Prometheus immediately."
+
+      - alert: RundeckDown
+        expr: up{job="rundeck"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          building: factory
+          category: automation
+        annotations:
+          summary: "Rundeck is down"
+          description: "Factory (Rundeck) is unavailable."
+          action: "Restart Rundeck and validate PostgreSQL connectivity."
+
+      - alert: NextcloudDown
+        expr: up{job="nextcloud"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          building: fortress
+          category: portal
+        annotations:
+          summary: "Nextcloud is down"
+          description: "Fortress (Nextcloud) is unavailable."
+          action: "Restart Nextcloud AIO and verify data volume mounts."
