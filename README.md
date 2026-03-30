@@ -5,7 +5,7 @@ The project is designed around a practical operating model:
 - **Spirit** (FastAPI) observes system state, reflects with local LLM support, and proposes actions through approvals
 - **OpenFang** runs agent personas (observer/orchestrator/reflector + domain agents)
 - **Prometheus + Alertmanager + exporters** provide telemetry and health visibility
-- **Rundeck + PostgreSQL + Redis** provide execution, state, and event bus capabilities
+- **Rundeck + PostgreSQL + Redis + Gitea** provide execution, state, event bus, and sovereign source control
 - **cityview** provides a Vue-based gamified observer/mainframe UI
 
 ## Current architecture (repository runtime)
@@ -18,6 +18,7 @@ Core services:
 - `alertmanager` (`9093`) — alert routing
 - `postgres` (`5432`, internal) — relational data backend
 - `rundeck` (`4440`) — automation/job execution
+- `gitea` (`3000` HTTP, `2222` SSH) — self-hosted Git forge
 - `node-exporter` + `cadvisor` — host/container metrics
 
 Optional service profile:
@@ -34,7 +35,7 @@ External integration:
 - `alertmanager/` — alert routing config
 - `rundeck/` — Rundeck configuration
 - `cityview/` — Vue 3 + Pinia + Vite UI
-- `ops/` — operator config and runbook (`CONFIG.md`, `RUNBOOK.md`)
+- `ops/` — operator config and runbook (`CONFIG.md`, `RUNBOOK.md`) plus host Gitea deployment artifacts in `ops/gitea/`
 - `docs/research/` — architecture and research reports
 - `docs/reference/` — reference PDFs
 - `WARP.md` — TRL4 operational guide (current-state operations)
@@ -50,29 +51,41 @@ External integration:
 1. Create `compose/.env` (required variables):
    - `POSTGRES_PASSWORD=<strong-password>`
    - `RUNDECK_ADMIN_PASSWORD=<strong-password>`
+   - `GITEA_DB_PASSWORD=<strong-password>`
 
-2. (Optional) Add LLM/Spirit tuning values in the same file, e.g.:
+2. Create Gitea PostgreSQL role/database once (idempotent example):
+   ```bash
+   docker compose -f compose/docker-compose.yml exec -T postgres \
+     psql -U ${POSTGRES_USER:-citydb} -d ${POSTGRES_DB:-cityoflight} \
+     -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='gitea') THEN CREATE ROLE gitea LOGIN PASSWORD '${GITEA_DB_PASSWORD}'; END IF; END \$\$;"
+   docker compose -f compose/docker-compose.yml exec -T postgres \
+     psql -U ${POSTGRES_USER:-citydb} -d ${POSTGRES_DB:-cityoflight} \
+     -c "SELECT 'CREATE DATABASE gitea OWNER gitea' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname='gitea')\\gexec"
+   ```
+
+3. (Optional) Add LLM/Spirit tuning values in the same file, e.g.:
    - `SPIRIT_LLM_ENABLED=true`
    - `SPIRIT_LLM_ENDPOINT=http://llama-cpp:8081`
    - `SPIRIT_LLM_TIMEOUT=90`
    - `SPIRIT_LLM_MAX_TOKENS=256`
    - `LLAMA_MODEL=/models/<model>.gguf`
 
-3. Start core stack:
+4. Start core stack:
    ```bash
    docker compose -f compose/docker-compose.yml up -d
    ```
 
-4. Start optional LLM service:
+5. Start optional LLM service:
    ```bash
    docker compose -f compose/docker-compose.yml --profile university up -d llama-cpp
    ```
 
-5. Verify health:
+6. Verify health:
    ```bash
    docker compose -f compose/docker-compose.yml ps
    curl -s http://localhost:9105/health | jq .
    curl -s http://localhost:4200/api/health | jq .
+   curl -s http://localhost:3000/api/healthz
    curl -s http://localhost:9090/-/healthy
    ```
 

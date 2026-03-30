@@ -10,10 +10,13 @@
 - Spirit health + approvals queue:
   - `curl -s http://localhost:9105/health | jq .`
   - `curl -s http://localhost:9105/approvals | jq .`
+  - `curl -s http://localhost:9105/api/v1/status | jq '.approval_policy'`
 - Spirit self-reflection (when LLM enabled):
   - `curl -s http://localhost:9105/api/v1/reflection | jq .`
 - OpenFang daemon health:
   - `curl -s http://localhost:4200/api/health | jq .`
+- Gitea forge health:
+  - `curl -s http://localhost:3000/api/healthz | jq .`
 
 ## Incident triage
 1. Check which building is down:
@@ -24,6 +27,18 @@
    - `curl -s http://localhost:9093/api/v2/status | jq .`
 4. Validate OpenFang API:
    - `curl -s http://localhost:4200/api/agents | jq .`
+5. Validate Gitea API:
+   - `curl -s http://localhost:3000/api/v1/version | jq .`
+
+## Approval quest handling
+- List pending approvals with tier requirements:
+  - `curl -s http://localhost:9105/approvals | jq '.pending_approvals[] | {id, action, severity, requester_tier, required_approver_tier, reason}'`
+- Approve by id as Admin tier:
+  - `curl -s -X POST http://localhost:9105/approve -H "Content-Type: application/json" -d '{"id":"<approval-id>","actor_tier":"admin"}' | jq .`
+- Reject by id with reason:
+  - `curl -s -X POST http://localhost:9105/reject -H "Content-Type: application/json" -d '{"id":"<approval-id>","actor_tier":"admin","reason":"denied by operator"}' | jq .`
+- Legacy index-based approval remains available for compatibility:
+  - `curl -s -X POST http://localhost:9105/approve -H "Content-Type: application/json" -d '{"index":0,"actor_tier":"admin"}' | jq .`
 
 ## Safe restart patterns
 - Restart one service:
@@ -46,6 +61,7 @@
    - `docker compose -f compose/docker-compose.yml ps`
    - `curl -s http://localhost:9105/health | jq .`
    - `curl -s http://localhost:4200/api/health | jq .`
+   - `curl -s http://localhost:3000/api/healthz | jq .`
 
 ## OpenFang Personas bootstrap
 The API expects `manifest_toml` (inline TOML content) in the JSON body. Helper to spawn from a manifest file:
@@ -65,6 +81,16 @@ curl -s -X POST http://localhost:4200/api/agents \
   - `docker compose -f compose/docker-compose.yml --profile university up -d llama-cpp`
 - Stop optional LLM service:
   - `docker compose -f compose/docker-compose.yml --profile university stop llama-cpp`
+
+## Forge deployment (Gitea on host via Tailscale)
+- Artifacts:
+  - `ops/gitea/docker-compose.host.yml`
+  - `ops/gitea/.env.example`
+  - `ops/gitea/deploy_wera.sh`
+- Deploy to lab host:
+  - `./ops/gitea/deploy_wera.sh`
+- After deploy:
+  - access URL and admin credentials are stored on host in `/home/wera/.secrets/gitea-admin.env`
 
 ## Fortress integration checklist
 - Nextcloud reachable: `http://localhost:8080`

@@ -52,6 +52,8 @@ Details (IDs/addresses/endpoints; no API tokens here):
 - Factory (Rundeck): 4440
 - Spirit: 9105
 - OpenFang API/WebChat: 4200
+- Forge (Gitea HTTP): 3000
+- Forge (Gitea SSH): 2222
 - University (llama.cpp, optional): 8081
 - House (PostgreSQL): 5432
 

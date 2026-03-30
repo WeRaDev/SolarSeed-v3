@@ -18,6 +18,43 @@ services:
       retries: 5
     networks:
       - city_internal
+  gitea:
+    image: gitea/gitea:1.25.5
+    container_name: city-gitea
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: postgres:5432
+      GITEA__database__NAME: gitea
+      GITEA__database__USER: gitea
+      GITEA__database__PASSWD: ${GITEA_DB_PASSWORD}
+      GITEA__server__DOMAIN: ${GITEA_DOMAIN:-localhost}
+      GITEA__server__ROOT_URL: ${GITEA_ROOT_URL:-http://localhost:3000/}
+      GITEA__server__SSH_DOMAIN: ${GITEA_SSH_DOMAIN:-localhost}
+      GITEA__server__SSH_PORT: ${GITEA_SSH_PORT:-2222}
+      GITEA__server__SSH_LISTEN_PORT: 2222
+      GITEA__server__START_SSH_SERVER: "true"
+      GITEA__service__DISABLE_REGISTRATION: "true"
+      GITEA__service__REQUIRE_SIGNIN_VIEW: "true"
+    ports:
+      - "3000:3000"
+      - "2222:2222"
+    volumes:
+      - gitea_data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/api/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - city_internal
 
   openfang:
     build:
@@ -250,6 +287,7 @@ volumes:
   prometheus_data:
   alertmanager_data:
   postgres_data:
+  gitea_data:
   rundeck_data:
   spirit_memory:
   spirit_logs:

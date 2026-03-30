@@ -1,7 +1,7 @@
 # buildings.md -- City of Light Building Registry
 
 All apps and services available to agents on wera-ss-pt-sn-1.
-Updated: 2026-03-26
+Updated: 2026-03-28
 
 ---
 
@@ -89,6 +89,20 @@ Updated: 2026-03-26
   - Scheduled agent tasks (cron-style)
 - **Current agents**: spirit-observer, spirit-orchestrator, spirit-reflector (manifests in `openfang/agents/`)
 
+### Forge -- Gitea
+- **Container**: col-gitea
+- **Image**: gitea/gitea:1.25.5
+- **Port**: 3000 (HTTP), 2222 (SSH Git)
+- **Memory**: 256 MB
+- **Status**: Planned (TRL4.1 rollout)
+- **Access**: `http://<tailscale-host>:3000`
+- **Purpose**: Sovereign source control forge for SolarSeed repositories, issues, and pull requests
+- **Database**: PostgreSQL `gitea` DB/user on the internal Docker network
+- **Security baseline**:
+  - Registration disabled
+  - Sign-in required to view repositories
+  - Access scoped by Tailscale network policy
+
 ### Event Bus -- Redis
 - **Container**: col-redis
 - **Image**: redis:7-alpine
@@ -136,11 +150,13 @@ Updated: 2026-03-26
 - **Purpose**: Self-aware heartbeat of the City; observes, reflects, proposes
 - **Endpoints**:
   - `GET /health` -- liveness
-  - `GET /api/v1/status` -- buildings and approvals
+  - `GET /api/v1/status` -- buildings, approvals, and approval policy tiers
   - `GET /api/v1/reflection` -- latest LLM reflection
   - `GET /metrics` -- Prometheus metrics
-  - `GET /approvals` -- pending approval queue
-  - `POST /approve` -- approve an action (Admin only)
+  - `GET /approvals` -- pending approval queue and supported tiers
+  - `POST /approve` -- tier-aware approval by `id` (or legacy `index`) + `actor_tier`
+  - `POST /reject` -- tier-aware rejection by `id` (or legacy `index`) + `actor_tier`
+- **Approval item fields**: `id`, `action`, `severity`, `requester_tier`, `required_approver_tier`, `reason`, `timestamp`
 
 ---
 
