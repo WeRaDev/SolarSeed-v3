@@ -7,13 +7,14 @@ const CITY_HOST = window.__CITY_HOST__ || '100.82.194.96'
 // Layout: 6 buildings arranged in a hexagon around Spirit at (480, 300)
 // Top row y=120, middle row y=300, bottom row y=480
 const BUILDING_DEFS = [
-  { id: 'agency',     label: 'Agency',      desc: 'OpenFang v0.5 Agent OS',    jobs: ['openfang'],  icon: 'barracks',    x: 340, y: 120, appUrl: `http://${CITY_HOST}:4200`,  mem: '512 MB', port: 4200 },
-  { id: 'eventbus',   label: 'Event Bus',   desc: 'Redis 7 Streams',           jobs: ['redis'],     icon: 'tower',       x: 620, y: 120, appUrl: null,                        mem: '256 MB', port: 6379 },
-  { id: 'library',    label: 'Library',     desc: 'Prometheus + Alertmanager', jobs: ['prometheus'], icon: 'observatory', x: 160, y: 300, appUrl: `http://${CITY_HOST}:9090`,  mem: '512 MB', port: 9090 },
-  { id: 'university', label: 'University',  desc: 'llama.cpp (Qwen 3B)',       jobs: ['llama-cpp'], icon: 'dome',        x: 800, y: 300, appUrl: `http://${CITY_HOST}:8081`,  mem: '3 GB',   port: 8081 },
-  { id: 'fortress',   label: 'Fortress',   desc: 'Nextcloud AIO',             jobs: ['nextcloud'], icon: 'castle',      x: 340, y: 480, appUrl: `http://${CITY_HOST}:8080`,  mem: '~2 GB',  port: 8080 },
-  { id: 'house',      label: 'House',       desc: 'PostgreSQL 16',             jobs: ['postgres'],  icon: 'house',       x: 620, y: 480, appUrl: null,                        mem: '512 MB', port: 5432 },
+  { id: 'agency',     label: 'Agency',      desc: 'OpenFang v0.5 Agent OS',    jobs: ['openfang'],  icon: 'barracks',    x: 340, y: 120, appUrl: `http://${CITY_HOST}:4200`,                       appLabel: 'Open App →',                 mem: '512 MB', port: 4200 },
+  { id: 'eventbus',   label: 'Event Bus',   desc: 'Redis 7 Streams',           jobs: ['redis'],     icon: 'tower',       x: 620, y: 120, appUrl: null,                                                     mem: '256 MB', port: 6379 },
+  { id: 'library',    label: 'Library',     desc: 'Prometheus + Alertmanager', jobs: ['prometheus'], icon: 'observatory', x: 160, y: 300, appUrl: `http://${CITY_HOST}:9090`,                       appLabel: 'Open App →',                 mem: '512 MB', port: 9090 },
+  { id: 'university', label: 'University',  desc: 'llama.cpp (Qwen 3B)',       jobs: ['llama-cpp'], icon: 'dome',        x: 800, y: 300, appUrl: `http://${CITY_HOST}:8081`,                       appLabel: 'Open App →',                 mem: '3 GB',   port: 8081 },
+  { id: 'fortress',   label: 'Fortress',    desc: 'Nextcloud AIO',             jobs: ['nextcloud'], icon: 'castle',      x: 340, y: 480, appUrl: `http://${CITY_HOST}:8080`,                       appLabel: 'Open App →',                 mem: '~2 GB',  port: 8080 },
+  { id: 'house',      label: 'House',       desc: 'PostgreSQL 16 + Gitea governance', jobs: ['postgres'],  icon: 'house', x: 620, y: 480, appUrl: `http://${CITY_HOST}:3000/admin/house-db-governance`, appLabel: 'Open DB Governance (Gitea) →', mem: '512 MB', port: 5432 },
 ]
+const APPROVAL_TIERS = ['guest', 'external_agent', 'internal_agent', 'admin']
 
 async function fetchJson(url) {
   try {

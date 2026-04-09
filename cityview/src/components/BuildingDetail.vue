@@ -26,7 +26,7 @@
       @click.stop="openApp"
       style="cursor: pointer"
     >
-      Open App &#x2192;
+      {{ building.appLabel || 'Open App →' }}
     </text>
 
     <!-- Close hint -->
