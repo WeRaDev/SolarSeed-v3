@@ -1,5 +1,6 @@
 # Local env / secrets
 compose/.env
+odoo-app/.env
 
 # LLM weights
 models/
