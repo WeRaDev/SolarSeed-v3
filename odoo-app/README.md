@@ -67,3 +67,32 @@ This creates:
 - Keep custom addons in `odoo-app/addons/`.
 - Keep Odoo config in `odoo-app/config/odoo.conf`.
 - Prefer small upgrades (`-u <module_name>`) instead of reinstalling full DB.
+
+## 8) Compatibility findings: `gogarden.dump.zip`
+
+The file `odoo-app/gogarden.dump.zip` is a full database backup (`dump.sql` + `filestore/`), not an installable addon module.
+
+### What was tested
+
+- Restore into local `odoo:18.0` stack with PostgreSQL 15.
+- Restore into temporary `odoo:19.0` stack with PostgreSQL 16 + pgvector.
+- Copy matching filestore to `/var/lib/odoo/filestore/gogardens`.
+- Open `/web/login?db=gogardens`.
+
+### Observed result
+
+- Database and filestore restore complete, but login request fails with HTTP 500.
+- Backup metadata reports base version `saas~19.2.1.3`, which does not match local standard image versions.
+- Representative errors seen during tests:
+  - `column res_lang.short_time_format does not exist`
+  - `column res_company.layout_background does not exist`
+  - `Skipping database gogardens as its base version is not 19.0.1.3`
+
+### Conclusion
+
+This backup is from an Odoo Online/SaaS schema level and is not directly runnable on the local Community Docker images used in this repository.
+
+### Recommended path
+
+- Use a source and module set matching the exact SaaS schema lineage, or
+- Perform a formal migration/export path to a supported on-premise version before local restore testing.
