@@ -268,6 +268,32 @@ services:
       retries: 3
     networks:
       - city_internal
+  cityview:
+    image: node:20-alpine
+    container_name: city-cityview
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      CITY_HOST: ${CITYVIEW_CITY_HOST:-host.docker.internal}
+      POLY_ROBOT_HOST: ${POLY_ROBOT_HOST:-host.docker.internal}
+      POLY_ROBOT_OPERATOR_TOKEN: ${POLY_ROBOT_OPERATOR_TOKEN:-}
+    volumes:
+      - ../cityview:/app
+      - cityview_node_modules:/app/node_modules
+    command: sh -lc "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
+    ports:
+      - "5173:5173"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      spirit:
+        condition: service_healthy
+      openfang:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+    networks:
+      - city_internal
 
   # Nextcloud (Fortress) is managed externally by the FilantropiaSolar compose stack.
   # Connect it to city_internal at runtime:
@@ -292,3 +318,4 @@ volumes:
   spirit_memory:
   spirit_logs:
   openfang_data:
+  cityview_node_modules:

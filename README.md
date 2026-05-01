@@ -101,6 +101,35 @@ CITY_HOST=<target-host-or-ip> npm run dev
 Default dev server:
 - `http://localhost:5173`
 
+## cityview UI (local Docker runtime)
+`cityview` can now run as a dedicated Docker service in `compose/docker-compose.yml`.
+
+Start UI only (assumes backend endpoints are reachable from configured host values):
+```bash
+docker compose -f compose/docker-compose.yml up -d --no-deps cityview
+```
+
+Start UI with core backend services:
+```bash
+docker compose -f compose/docker-compose.yml up -d postgres prometheus spirit openfang cityview
+```
+
+Runtime host controls:
+- `CITYVIEW_CITY_HOST` controls `CITY_HOST` used by Vite proxy targets.
+- `POLY_ROBOT_HOST` controls the Poly-Robot proxy target (`:8765`).
+- If unset, both default to `host.docker.internal` in the dockerized UI service.
+
+## Reconciliation plan (Docker-based)
+The current reconciliation baseline keeps Poly-Robot and Odoo additions while stabilizing runtime through Dockerized `cityview`.
+
+1. Standardize local UI startup through Compose (`cityview` service) instead of ad-hoc host Node runs.
+2. Keep Poly-Robot integration enabled in `cityview` (`golden-mine`, `/poly-robot` proxy, health polling) and validate it via host-configurable envs.
+3. Preserve `odoo-app/` as an intentional local addition; decide separately whether it should be tracked in this repository or ignored.
+4. Use two operational modes:
+   - UI-only: `up -d --no-deps cityview`
+   - Full local stack: `up -d postgres prometheus spirit openfang cityview`
+5. Gate future behavior changes behind explicit env flags, while keeping the Docker runtime path stable.
+
 ## Spirit API surface
 Main endpoints exposed by `spirit/src/spirit.py`:
 - `GET /health`
