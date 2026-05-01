@@ -4,6 +4,7 @@ import vue from '@vitejs/plugin-vue'
 // Target host: use CITY_HOST env or default to Tailscale IP
 const CITY_HOST = process.env.CITY_HOST || '100.82.194.96'
 const POLY_ROBOT_HOST = process.env.POLY_ROBOT_HOST || CITY_HOST
+const POLY_ROBOT_OPERATOR_TOKEN = process.env.POLY_ROBOT_OPERATOR_TOKEN || ''
 
 export default defineConfig({
   plugins: [vue()],
@@ -28,6 +29,9 @@ export default defineConfig({
       '/poly-robot': {
         target: `http://${POLY_ROBOT_HOST}:8765`,
         changeOrigin: true,
+        headers: POLY_ROBOT_OPERATOR_TOKEN
+          ? { 'X-Operator-Token': POLY_ROBOT_OPERATOR_TOKEN }
+          : {},
         rewrite: (path) => path.replace(/^\/poly-robot/, ''),
       },
     },
