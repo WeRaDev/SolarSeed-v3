@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 
 // Resolve host for app links: Tailscale IP or env override
 const CITY_HOST = window.__CITY_HOST__ || import.meta.env.VITE_CITY_HOST || '100.82.194.96'
-const POLY_ROBOT_URL = window.__POLY_ROBOT_URL__ || import.meta.env.VITE_POLY_ROBOT_URL || `http://${CITY_HOST}:8765`
+const POLY_ROBOT_URL = window.__POLY_ROBOT_URL__ || import.meta.env.VITE_POLY_ROBOT_URL || '/poly-robot/'
 const POLY_ROBOT_HEALTH_PATH = window.__POLY_ROBOT_HEALTH_PATH__ || import.meta.env.VITE_POLY_ROBOT_HEALTH_PATH || '/poly-robot/healthz'
 
 // Building definitions: id maps to Spirit building key (from HTTP probes + Prometheus)
