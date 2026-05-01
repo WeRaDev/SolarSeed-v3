@@ -34,6 +34,13 @@ export default defineConfig({
           : {},
         rewrite: (path) => path.replace(/^\/poly-robot/, ''),
       },
+      '/api': {
+        target: `http://${POLY_ROBOT_HOST}:8765`,
+        changeOrigin: true,
+        headers: POLY_ROBOT_OPERATOR_TOKEN
+          ? { 'X-Operator-Token': POLY_ROBOT_OPERATOR_TOKEN }
+          : {},
+      },
     },
   },
 })
