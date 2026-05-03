@@ -29,5 +29,45 @@
       "url": "http://127.0.0.1:19093/-/healthy",
       "timeout_seconds": 5
     }
+  ],
+  "building_access": [
+    {
+      "id": "golden-mine",
+      "app_url": "/poly-robot/",
+      "app_label": "Open Poly-Robot GUI →",
+      "requires_connection": true,
+      "connection_check": "poly-robot",
+      "forward_name": "poly-robot"
+    },
+    {
+      "id": "agency",
+      "app_url": "/openfang/",
+      "app_label": "Open OpenFang →",
+      "requires_connection": false
+    },
+    {
+      "id": "library",
+      "app_url": "/prometheus/",
+      "app_label": "Open Prometheus →",
+      "requires_connection": false
+    },
+    {
+      "id": "university",
+      "app_url": "/university/",
+      "app_label": "Open llama.cpp →",
+      "requires_connection": false
+    },
+    {
+      "id": "fortress",
+      "app_url": "/fortress/",
+      "app_label": "Open Nextcloud AIO →",
+      "requires_connection": false
+    },
+    {
+      "id": "house",
+      "app_url": "/house/",
+      "app_label": "Open Gitea →",
+      "requires_connection": false
+    }
   ]
 }

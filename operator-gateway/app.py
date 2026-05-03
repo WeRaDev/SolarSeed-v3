@@ -5,10 +5,10 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.error import URLError
-from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
+from urllib.request import Request as UrlRequest, urlopen
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel
 
 
@@ -28,12 +28,23 @@ class HealthCheckSpec:
 
 
 @dataclass
+class BuildingAccessSpec:
+    id: str
+    app_url: str | None
+    app_label: str
+    requires_connection: bool
+    connection_check: str | None
+    forward_name: str | None
+
+
+@dataclass
 class Profile:
     name: str
     ssh_host: str
     ssh_user: str
     forwards: list[ForwardSpec]
     health_checks: list[HealthCheckSpec]
+    building_access: list[BuildingAccessSpec]
 
 
 class ActionResponse(BaseModel):
@@ -73,12 +84,24 @@ def _load_profile() -> Profile:
         )
         for i, c in enumerate(raw.get("health_checks", []))
     ]
+    access = [
+        BuildingAccessSpec(
+            id=b["id"],
+            app_url=b.get("app_url"),
+            app_label=b.get("app_label", "Open App →"),
+            requires_connection=bool(b.get("requires_connection", False)),
+            connection_check=b.get("connection_check"),
+            forward_name=b.get("forward_name"),
+        )
+        for b in raw.get("building_access", [])
+    ]
     return Profile(
         name=raw.get("name", "default"),
         ssh_host=str(ssh.get("host", "")).strip(),
         ssh_user=str(ssh.get("user", "")).strip(),
         forwards=forwards,
         health_checks=checks,
+        building_access=access,
     )
 
 
@@ -109,7 +132,7 @@ def _listener_pid(port: int) -> int | None:
 
 
 def _check_http(url: str, timeout_seconds: int) -> dict[str, Any]:
-    req = Request(url, method="GET")
+    req = UrlRequest(url, method="GET")
     try:
         with urlopen(req, timeout=timeout_seconds) as resp:
             return {"ok": True, "status": resp.status}
@@ -167,6 +190,36 @@ def _ssh_target() -> str:
     if not PROFILE.ssh_host or not PROFILE.ssh_user:
         raise RuntimeError("profile ssh user/host are required")
     return f"{PROFILE.ssh_user}@{PROFILE.ssh_host}"
+
+
+def _forward_map() -> dict[str, ForwardSpec]:
+    return {f.name: f for f in PROFILE.forwards}
+
+
+def _resolve_building_access(status: dict[str, Any]) -> list[dict[str, Any]]:
+    checks = {c["name"]: c for c in status.get("health_checks", [])}
+    resolved = []
+    for b in PROFILE.building_access:
+        app_url = b.app_url
+        health_hint = "unknown"
+        if b.connection_check and b.connection_check in checks:
+            health_hint = "up" if checks[b.connection_check].get("ok") else "down"
+        elif b.requires_connection:
+            health_hint = "up" if status.get("connected") else "down"
+        if b.requires_connection and not status.get("connected"):
+            app_url = None
+        resolved.append(
+            {
+                "id": b.id,
+                "app_url": app_url,
+                "app_label": b.app_label,
+                "requires_connection": b.requires_connection,
+                "connection_check": b.connection_check,
+                "forward_name": b.forward_name,
+                "health_hint": health_hint,
+            }
+        )
+    return resolved
 
 
 def _start_forward(f: ForwardSpec) -> None:
@@ -229,6 +282,67 @@ def profile() -> dict[str, Any]:
 @app.get("/api/v1/connection/status")
 def connection_status() -> dict[str, Any]:
     return _status()
+
+
+@app.get("/api/v1/access/buildings")
+def access_buildings() -> dict[str, Any]:
+    status = _status()
+    return {
+        "profile": {"name": PROFILE.name},
+        "connection_state": status.get("state", "UNKNOWN"),
+        "connected": bool(status.get("connected")),
+        "buildings": _resolve_building_access(status),
+    }
+
+
+@app.api_route("/api/v1/access/proxy/{forward_name}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+@app.api_route("/api/v1/access/proxy/{forward_name}/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+async def access_proxy(forward_name: str, request: Request, path: str = "") -> Response:
+    forward = _forward_map().get(forward_name)
+    if not forward:
+        raise HTTPException(status_code=404, detail=f"unknown forward: {forward_name}")
+    if not _listener_pid(forward.local_port):
+        raise HTTPException(status_code=503, detail=f"forward {forward_name} is not connected")
+
+    prefix = f"http://127.0.0.1:{forward.local_port}"
+    proxy_path = path.lstrip("/")
+    target_url = f"{prefix}/{proxy_path}" if proxy_path else f"{prefix}/"
+    if request.url.query:
+        target_url = f"{target_url}?{request.url.query}"
+
+    outgoing_headers: dict[str, str] = {}
+    for k, v in request.headers.items():
+        lk = k.lower()
+        if lk in ("host", "content-length", "connection", "accept-encoding"):
+            continue
+        outgoing_headers[k] = v
+
+    body = await request.body()
+    proxy_req = UrlRequest(
+        target_url,
+        data=body if body else None,
+        headers=outgoing_headers,
+        method=request.method,
+    )
+    try:
+        with urlopen(proxy_req, timeout=30) as resp:
+            resp_body = resp.read()
+            headers = {}
+            content_type = resp.headers.get("Content-Type")
+            if content_type:
+                headers["Content-Type"] = content_type
+            return Response(content=resp_body, status_code=resp.status, headers=headers)
+    except HTTPError as exc:
+        exc_body = exc.read()
+        headers = {}
+        content_type = exc.headers.get("Content-Type") if exc.headers else None
+        if content_type:
+            headers["Content-Type"] = content_type
+        return Response(content=exc_body, status_code=exc.code, headers=headers)
+    except URLError as exc:
+        raise HTTPException(status_code=502, detail=f"proxy error: {exc.reason}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"proxy error: {exc}") from exc
 
 
 @app.post("/api/v1/connection/start", response_model=ActionResponse)

@@ -28,6 +28,13 @@
     >
       {{ building.appLabel || 'Open App →' }}
     </text>
+    <text
+      v-else-if="building.requiresConnection"
+      x="12" y="88"
+      class="detail-resource"
+    >
+      Connect SSH to open this building.
+    </text>
 
     <!-- Close hint -->
     <text :x="184" y="16" text-anchor="end" class="close-hint" style="cursor:pointer"
@@ -54,7 +61,7 @@ const panelY = computed(() => {
   return by > 400 ? by - 110 : by - 50
 })
 
-const panelHeight = computed(() => props.building.appUrl ? 100 : 82)
+const panelHeight = computed(() => (props.building.appUrl || props.building.requiresConnection) ? 100 : 82)
 
 function openApp() {
   if (props.building.appUrl) {

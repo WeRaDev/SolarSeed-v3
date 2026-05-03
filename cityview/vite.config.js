@@ -29,19 +29,35 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/prometheus/, ''),
       },
       '/poly-robot': {
-        target: `http://${POLY_ROBOT_HOST}:8765`,
+        target: `http://${OPERATOR_GATEWAY_HOST}:${OPERATOR_GATEWAY_PORT}`,
         changeOrigin: true,
         headers: POLY_ROBOT_OPERATOR_TOKEN
           ? { 'X-Operator-Token': POLY_ROBOT_OPERATOR_TOKEN }
           : {},
-        rewrite: (path) => path.replace(/^\/poly-robot/, ''),
+        rewrite: (path) => path.replace(/^\/poly-robot/, '/api/v1/access/proxy/poly-robot'),
       },
       '/api': {
-        target: `http://${POLY_ROBOT_HOST}:8765`,
+        target: `http://${OPERATOR_GATEWAY_HOST}:${OPERATOR_GATEWAY_PORT}`,
         changeOrigin: true,
         headers: POLY_ROBOT_OPERATOR_TOKEN
           ? { 'X-Operator-Token': POLY_ROBOT_OPERATOR_TOKEN }
           : {},
+        rewrite: (path) => `/api/v1/access/proxy/poly-robot${path}`,
+      },
+      '/fortress': {
+        target: `http://${CITY_HOST}:8080`,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/fortress/, ''),
+      },
+      '/university': {
+        target: `http://${CITY_HOST}:8081`,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/university/, ''),
+      },
+      '/house': {
+        target: `http://${CITY_HOST}:3000`,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/house/, ''),
       },
       '/operator': {
         target: `http://${OPERATOR_GATEWAY_HOST}:${OPERATOR_GATEWAY_PORT}`,
