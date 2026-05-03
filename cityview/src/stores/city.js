@@ -51,8 +51,15 @@ export const useCityStore = defineStore('city', {
     // UI
     selectedBuildingId: null,
     questPanelOpen: false,
+    connectionPanelOpen: false,
     lastPollTime: null,
     pollError: null,
+
+    // Operator gateway connection state
+    operatorConnection: null,
+    operatorProfile: null,
+    operatorBusy: false,
+    operatorError: null,
   }),
 
   getters: {
@@ -106,6 +113,14 @@ export const useCityStore = defineStore('city', {
     approvalCount(state) {
       return state.pendingApprovals.length
     },
+
+    connectionState(state) {
+      return state.operatorConnection?.state || 'UNKNOWN'
+    },
+
+    connectionHealthy(state) {
+      return Boolean(state.operatorConnection?.healthy)
+    },
   },
 
   actions: {
@@ -113,7 +128,7 @@ export const useCityStore = defineStore('city', {
       this.lastPollTime = new Date().toISOString()
       this.pollError = null
       try {
-        const [health, status, refl, meditation, agents, targets, polyRobotHealth] = await Promise.all([
+        const [health, status, refl, meditation, agents, targets, polyRobotHealth, operatorConnection] = await Promise.all([
           fetchJson('/spirit/health'),
           fetchJson('/spirit/api/v1/status'),
           fetchJson('/spirit/api/v1/reflection'),
@@ -121,6 +136,7 @@ export const useCityStore = defineStore('city', {
           fetchJson('/openfang/api/agents'),
           fetchJson('/prometheus/api/v1/targets'),
           fetchJson(POLY_ROBOT_HEALTH_PATH),
+          fetchJson('/operator/api/v1/connection/status'),
         ])
 
         if (health) this.spiritHealth = health
@@ -146,6 +162,10 @@ export const useCityStore = defineStore('city', {
         } else {
           this.polyRobotOk = false
         }
+        if (operatorConnection) {
+          this.operatorConnection = operatorConnection
+          this.operatorError = null
+        }
       } catch (e) {
         this.pollError = e.message
       }
@@ -157,6 +177,55 @@ export const useCityStore = defineStore('city', {
 
     toggleQuestPanel() {
       this.questPanelOpen = !this.questPanelOpen
+    },
+
+    toggleConnectionPanel() {
+      this.connectionPanelOpen = !this.connectionPanelOpen
+    },
+
+    async refreshConnectionStatus() {
+      const [connection, profile] = await Promise.all([
+        fetchJson('/operator/api/v1/connection/status'),
+        fetchJson('/operator/api/v1/connection/profile'),
+      ])
+      if (connection) this.operatorConnection = connection
+      if (profile) this.operatorProfile = profile
+      if (!connection) this.operatorError = 'Connection status unavailable'
+      else this.operatorError = null
+    },
+
+    async startConnection() {
+      this.operatorBusy = true
+      this.operatorError = null
+      try {
+        const res = await fetch('/operator/api/v1/connection/start', { method: 'POST' })
+        if (!res.ok) {
+          const text = await res.text()
+          throw new Error(text || `Start failed (${res.status})`)
+        }
+        await this.refreshConnectionStatus()
+      } catch (e) {
+        this.operatorError = e.message
+      } finally {
+        this.operatorBusy = false
+      }
+    },
+
+    async stopConnection() {
+      this.operatorBusy = true
+      this.operatorError = null
+      try {
+        const res = await fetch('/operator/api/v1/connection/stop', { method: 'POST' })
+        if (!res.ok) {
+          const text = await res.text()
+          throw new Error(text || `Stop failed (${res.status})`)
+        }
+        await this.refreshConnectionStatus()
+      } catch (e) {
+        this.operatorError = e.message
+      } finally {
+        this.operatorBusy = false
+      }
     },
 
     async approveAction(index) {

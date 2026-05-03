@@ -268,13 +268,27 @@ services:
       retries: 3
     networks:
       - city_internal
+  operator-gateway:
+    build:
+      context: ../operator-gateway
+    container_name: city-operator-gateway
+    restart: unless-stopped
+    environment:
+      OPERATOR_PROFILE_PATH: /app/config/session_profile.json
+    volumes:
+      - ../operator-gateway/config:/app/config
+      - ${HOME}/.ssh:/root/.ssh:ro
+    ports:
+      - "8780:8780"
+    networks:
+      - city_internal
   cityview:
     image: node:20-alpine
     container_name: city-cityview
     restart: unless-stopped
     working_dir: /app
     environment:
-      CITY_HOST: ${CITYVIEW_CITY_HOST:-host.docker.internal}
+      CITY_HOST: ${CITYVIEW_CITY_HOST:-100.82.194.96}
       POLY_ROBOT_HOST: ${POLY_ROBOT_HOST:-host.docker.internal}
       POLY_ROBOT_OPERATOR_TOKEN: ${POLY_ROBOT_OPERATOR_TOKEN:-}
     volumes:
@@ -286,6 +300,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
+      operator-gateway:
+        condition: service_started
       spirit:
         condition: service_healthy
       openfang:

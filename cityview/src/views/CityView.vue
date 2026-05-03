@@ -5,6 +5,7 @@
       <SkyLayer />
       <CityScene @open-agent="openAgent" @open-spirit="openSpirit" />
       <ReflectionPanel />
+      <ConnectionPanel />
     </div>
     <ApprovalQueue />
     <ChatConsole
@@ -27,11 +28,13 @@ import CityScene from '../components/CityScene.vue'
 import ReflectionPanel from '../components/ReflectionPanel.vue'
 import ApprovalQueue from '../components/ApprovalQueue.vue'
 import ChatConsole from '../components/ChatConsole.vue'
+import ConnectionPanel from '../components/ConnectionPanel.vue'
 
 const city = useCityStore()
 const { start } = usePolling(() => city.poll(), 10000)
 
 onMounted(start)
+onMounted(() => city.refreshConnectionStatus())
 
 const consoleOpen = ref(false)
 const consoleTarget = ref({ type: 'agent', name: 'assistant', id: '' })

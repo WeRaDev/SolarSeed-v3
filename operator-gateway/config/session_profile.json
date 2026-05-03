@@ -1,0 +1,33 @@
+{
+  "name": "trl4-default",
+  "ssh": {
+    "host": "100.82.194.96",
+    "user": "wera"
+  },
+  "forwards": [
+    {
+      "name": "poly-robot",
+      "local_port": 8765,
+      "remote_host": "127.0.0.1",
+      "remote_port": 8765
+    },
+    {
+      "name": "alertmanager",
+      "local_port": 19093,
+      "remote_host": "127.0.0.1",
+      "remote_port": 9093
+    }
+  ],
+  "health_checks": [
+    {
+      "name": "poly-robot",
+      "url": "http://127.0.0.1:8765/healthz",
+      "timeout_seconds": 5
+    },
+    {
+      "name": "alertmanager",
+      "url": "http://127.0.0.1:19093/-/healthy",
+      "timeout_seconds": 5
+    }
+  ]
+}

@@ -12,7 +12,6 @@
       </svg>
       <span class="title">City of Light</span>
     </div>
-
     <div class="kpis">
       <div class="kpi" :class="healthClass">
         <span class="kpi-val">{{ city.cityHealth }}</span>
@@ -34,17 +33,25 @@
         <span class="kpi-val">{{ city.soulVerified === true ? 'OK' : city.soulVerified === false ? 'FAIL' : '--' }}</span>
         <span class="kpi-lbl">Soul</span>
       </div>
+      <div class="kpi" :class="city.connectionState === 'CONNECTED' ? 'good' : city.connectionState === 'DEGRADED' ? 'warn' : 'crit'">
+        <span class="kpi-val">{{ city.connectionState === 'CONNECTED' ? 'ON' : city.connectionState === 'DEGRADED' ? 'DEGR' : 'OFF' }}</span>
+        <span class="kpi-lbl">SSH</span>
+      </div>
     </div>
-
-    <button class="quest-btn" @click="city.toggleQuestPanel()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-        <line x1="16" y1="13" x2="8" y2="13" />
-        <line x1="16" y1="17" x2="8" y2="17" />
-      </svg>
-      <span v-if="city.approvalCount > 0" class="badge">{{ city.approvalCount }}</span>
-    </button>
+    <div class="actions">
+      <button class="conn-btn" @click="city.toggleConnectionPanel()">
+        SSH
+      </button>
+      <button class="quest-btn" @click="city.toggleQuestPanel()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+        </svg>
+        <span v-if="city.approvalCount > 0" class="badge">{{ city.approvalCount }}</span>
+      </button>
+    </div>
   </header>
 </template>
 
@@ -136,6 +143,27 @@ const healthClass = computed(() => {
 }
 
 .quest-btn:hover {
+  background: var(--gold-highlight);
+}
+
+.actions {
+  display: flex;
+  gap: var(--sp-xs);
+  align-items: center;
+}
+
+.conn-btn {
+  border: 1px solid var(--gold-border);
+  border-radius: var(--radius-md);
+  background: white;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--charcoal);
+}
+
+.conn-btn:hover {
   background: var(--gold-highlight);
 }
 
