@@ -12,7 +12,45 @@
       "remote_port": 8765
     },
     {
-      "name": "alertmanager",
+      "name": "openfang",
+      "local_port": 8420,
+      "remote_host": "127.0.0.1",
+      "remote_port": 4200
+    },
+    {
+      "name": "prometheus",
+      "local_port": 8900,
+      "remote_host": "127.0.0.1",
+      "remote_port": 9090
+    },
+    {
+      "name": "spirit",
+      "local_port": 9106,
+      "remote_host": "127.0.0.1",
+      "remote_port": 9105
+    },
+    {
+      "name": "university",
+      "local_port": 8801,
+      "remote_host": "127.0.0.1",
+      "remote_port": 8081
+    },
+    {
+      "name": "fortress",
+      "local_port": 8800,
+      "remote_host": "127.0.0.1",
+      "remote_port": 8080,
+      "scheme": "https",
+      "insecure_tls": true
+    },
+    {
+      "name": "house",
+      "local_port": 8300,
+      "remote_host": "127.0.0.1",
+      "remote_port": 3000
+    },
+    {
+      "name": "alertmanager-check",
       "local_port": 19093,
       "remote_host": "127.0.0.1",
       "remote_port": 9093
@@ -25,11 +63,47 @@
       "timeout_seconds": 5
     },
     {
-      "name": "alertmanager",
+      "name": "openfang",
+      "url": "http://127.0.0.1:8420/api/health",
+      "timeout_seconds": 5
+    },
+    {
+      "name": "prometheus",
+      "url": "http://127.0.0.1:8900/-/healthy",
+      "timeout_seconds": 5
+    },
+    {
+      "name": "spirit",
+      "url": "http://127.0.0.1:9106/health",
+      "timeout_seconds": 5
+    },
+    {
+      "name": "university",
+      "url": "http://127.0.0.1:8801/health",
+      "timeout_seconds": 5
+    },
+    {
+      "name": "fortress",
+      "url": "https://127.0.0.1:8800",
+      "timeout_seconds": 5,
+      "insecure_tls": true
+    },
+    {
+      "name": "house",
+      "url": "http://127.0.0.1:8300/api/healthz",
+      "timeout_seconds": 5
+    },
+    {
+      "name": "alertmanager-check",
       "url": "http://127.0.0.1:19093/-/healthy",
       "timeout_seconds": 5
     }
   ],
+  "proxy_headers": {
+    "poly-robot": {
+      "X-Operator-Token": "env:POLY_ROBOT_OPERATOR_TOKEN"
+    }
+  },
   "building_access": [
     {
       "id": "golden-mine",
@@ -43,31 +117,41 @@
       "id": "agency",
       "app_url": "/openfang/",
       "app_label": "Open OpenFang →",
-      "requires_connection": false
+      "requires_connection": true,
+      "connection_check": "openfang",
+      "forward_name": "openfang"
     },
     {
       "id": "library",
       "app_url": "/prometheus/",
       "app_label": "Open Prometheus →",
-      "requires_connection": false
+      "requires_connection": true,
+      "connection_check": "prometheus",
+      "forward_name": "prometheus"
     },
     {
       "id": "university",
       "app_url": "/university/",
       "app_label": "Open llama.cpp →",
-      "requires_connection": false
+      "requires_connection": true,
+      "connection_check": "university",
+      "forward_name": "university"
     },
     {
       "id": "fortress",
       "app_url": "/fortress/",
       "app_label": "Open Nextcloud AIO →",
-      "requires_connection": false
+      "requires_connection": true,
+      "connection_check": "fortress",
+      "forward_name": "fortress"
     },
     {
       "id": "house",
       "app_url": "/house/",
       "app_label": "Open Gitea →",
-      "requires_connection": false
+      "requires_connection": true,
+      "connection_check": "house",
+      "forward_name": "house"
     }
   ]
 }

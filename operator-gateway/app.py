@@ -1,6 +1,7 @@
 import json
 import os
 import signal
+import ssl
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,6 +19,8 @@ class ForwardSpec:
     local_port: int
     remote_host: str
     remote_port: int
+    scheme: str
+    insecure_tls: bool
 
 
 @dataclass
@@ -25,6 +28,7 @@ class HealthCheckSpec:
     name: str
     url: str
     timeout_seconds: int
+    insecure_tls: bool
 
 
 @dataclass
@@ -45,6 +49,7 @@ class Profile:
     forwards: list[ForwardSpec]
     health_checks: list[HealthCheckSpec]
     building_access: list[BuildingAccessSpec]
+    proxy_headers: dict[str, dict[str, str]]
 
 
 class ActionResponse(BaseModel):
@@ -71,6 +76,8 @@ def _load_profile() -> Profile:
             local_port=int(f["local_port"]),
             remote_host=f["remote_host"],
             remote_port=int(f["remote_port"]),
+            scheme=f.get("scheme", "http"),
+            insecure_tls=bool(f.get("insecure_tls", False)),
         )
         for i, f in enumerate(raw.get("forwards", []))
     ]
@@ -81,6 +88,7 @@ def _load_profile() -> Profile:
             name=c.get("name", f"check-{i+1}"),
             url=c["url"],
             timeout_seconds=int(c.get("timeout_seconds", 5)),
+            insecure_tls=bool(c.get("insecure_tls", False)),
         )
         for i, c in enumerate(raw.get("health_checks", []))
     ]
@@ -95,6 +103,7 @@ def _load_profile() -> Profile:
         )
         for b in raw.get("building_access", [])
     ]
+    proxy_headers = raw.get("proxy_headers", {})
     return Profile(
         name=raw.get("name", "default"),
         ssh_host=str(ssh.get("host", "")).strip(),
@@ -102,6 +111,7 @@ def _load_profile() -> Profile:
         forwards=forwards,
         health_checks=checks,
         building_access=access,
+        proxy_headers=proxy_headers,
     )
 
 
@@ -131,10 +141,16 @@ def _listener_pid(port: int) -> int | None:
     return None
 
 
-def _check_http(url: str, timeout_seconds: int) -> dict[str, Any]:
+def _urlopen(req: UrlRequest, timeout_seconds: int, insecure_tls: bool = False):
+    if insecure_tls:
+        return urlopen(req, timeout=timeout_seconds, context=ssl._create_unverified_context())
+    return urlopen(req, timeout=timeout_seconds)
+
+
+def _check_http(url: str, timeout_seconds: int, insecure_tls: bool = False) -> dict[str, Any]:
     req = UrlRequest(url, method="GET")
     try:
-        with urlopen(req, timeout=timeout_seconds) as resp:
+        with _urlopen(req, timeout_seconds, insecure_tls=insecure_tls) as resp:
             return {"ok": True, "status": resp.status}
     except URLError as exc:
         return {"ok": False, "error": str(exc.reason)}
@@ -155,6 +171,8 @@ def _status() -> dict[str, Any]:
                 "local_port": f.local_port,
                 "remote_host": f.remote_host,
                 "remote_port": f.remote_port,
+                "scheme": f.scheme,
+                "insecure_tls": f.insecure_tls,
                 "listening": listening,
                 "pid": pid,
             }
@@ -162,13 +180,14 @@ def _status() -> dict[str, Any]:
     checks = []
     checks_ok = True
     for c in PROFILE.health_checks:
-        result = _check_http(c.url, c.timeout_seconds)
+        result = _check_http(c.url, c.timeout_seconds, insecure_tls=c.insecure_tls)
         checks_ok = checks_ok and result["ok"]
         checks.append(
             {
                 "name": c.name,
                 "url": c.url,
                 "timeout_seconds": c.timeout_seconds,
+                "insecure_tls": c.insecure_tls,
                 **result,
             }
         )
@@ -202,11 +221,13 @@ def _resolve_building_access(status: dict[str, Any]) -> list[dict[str, Any]]:
     for b in PROFILE.building_access:
         app_url = b.app_url
         health_hint = "unknown"
+        check_ok = True
         if b.connection_check and b.connection_check in checks:
-            health_hint = "up" if checks[b.connection_check].get("ok") else "down"
+            check_ok = bool(checks[b.connection_check].get("ok"))
+            health_hint = "up" if check_ok else "down"
         elif b.requires_connection:
             health_hint = "up" if status.get("connected") else "down"
-        if b.requires_connection and not status.get("connected"):
+        if b.requires_connection and (not status.get("connected") or not check_ok):
             app_url = None
         resolved.append(
             {
@@ -220,6 +241,13 @@ def _resolve_building_access(status: dict[str, Any]) -> list[dict[str, Any]]:
             }
         )
     return resolved
+
+
+def _resolve_header_value(value: str) -> str:
+    if value.startswith("env:"):
+        env_name = value.split(":", 1)[1]
+        return os.environ.get(env_name, "")
+    return value
 
 
 def _start_forward(f: ForwardSpec) -> None:
@@ -273,7 +301,7 @@ def profile() -> dict[str, Any]:
             for f in PROFILE.forwards
         ],
         "health_checks": [
-            {"name": c.name, "url": c.url, "timeout_seconds": c.timeout_seconds}
+            {"name": c.name, "url": c.url, "timeout_seconds": c.timeout_seconds, "insecure_tls": c.insecure_tls}
             for c in PROFILE.health_checks
         ],
     }
@@ -304,7 +332,7 @@ async def access_proxy(forward_name: str, request: Request, path: str = "") -> R
     if not _listener_pid(forward.local_port):
         raise HTTPException(status_code=503, detail=f"forward {forward_name} is not connected")
 
-    prefix = f"http://127.0.0.1:{forward.local_port}"
+    prefix = f"{forward.scheme}://127.0.0.1:{forward.local_port}"
     proxy_path = path.lstrip("/")
     target_url = f"{prefix}/{proxy_path}" if proxy_path else f"{prefix}/"
     if request.url.query:
@@ -316,6 +344,10 @@ async def access_proxy(forward_name: str, request: Request, path: str = "") -> R
         if lk in ("host", "content-length", "connection", "accept-encoding"):
             continue
         outgoing_headers[k] = v
+    for hdr_name, hdr_value in PROFILE.proxy_headers.get(forward_name, {}).items():
+        resolved_value = _resolve_header_value(hdr_value)
+        if resolved_value:
+            outgoing_headers[hdr_name] = resolved_value
 
     body = await request.body()
     proxy_req = UrlRequest(
@@ -325,7 +357,7 @@ async def access_proxy(forward_name: str, request: Request, path: str = "") -> R
         method=request.method,
     )
     try:
-        with urlopen(proxy_req, timeout=30) as resp:
+        with _urlopen(proxy_req, 30, insecure_tls=forward.insecure_tls) as resp:
             resp_body = resp.read()
             headers = {}
             content_type = resp.headers.get("Content-Type")
