@@ -18,6 +18,7 @@ export default defineConfig({
       '/openfang': {
         target: `http://${OPERATOR_GATEWAY_HOST}:${OPERATOR_GATEWAY_PORT}`,
         changeOrigin: true,
+        ws: true,
         rewrite: (path) => path.replace(/^\/openfang/, '/api/v1/access/proxy/openfang'),
       },
       '/prometheus': {
@@ -30,10 +31,21 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/poly-robot/, '/api/v1/access/proxy/poly-robot'),
       },
-      '/api': {
+      '/api/control': {
         target: `http://${OPERATOR_GATEWAY_HOST}:${OPERATOR_GATEWAY_PORT}`,
         changeOrigin: true,
         rewrite: (path) => `/api/v1/access/proxy/poly-robot${path}`,
+      },
+      '/api/dashboard': {
+        target: `http://${OPERATOR_GATEWAY_HOST}:${OPERATOR_GATEWAY_PORT}`,
+        changeOrigin: true,
+        rewrite: (path) => `/api/v1/access/proxy/poly-robot${path}`,
+      },
+      '/api': {
+        target: `http://${OPERATOR_GATEWAY_HOST}:${OPERATOR_GATEWAY_PORT}`,
+        changeOrigin: true,
+        ws: true,
+        rewrite: (path) => `/api/v1/access/proxy/openfang${path}`,
       },
       '/fortress': {
         target: `http://${OPERATOR_GATEWAY_HOST}:${OPERATOR_GATEWAY_PORT}`,

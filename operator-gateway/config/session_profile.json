@@ -64,8 +64,10 @@
     },
     {
       "name": "openfang",
-      "url": "http://127.0.0.1:8420/api/health",
-      "timeout_seconds": 5
+      "url": "http://127.0.0.1:8420/",
+      "timeout_seconds": 5,
+      "kind": "proxy_ui",
+      "forward_name": "openfang"
     },
     {
       "name": "prometheus",
@@ -80,23 +82,29 @@
     {
       "name": "university",
       "url": "http://127.0.0.1:8801/health",
-      "timeout_seconds": 5
+      "timeout_seconds": 5,
+      "kind": "http"
     },
     {
       "name": "fortress",
       "url": "https://127.0.0.1:8800",
       "timeout_seconds": 5,
-      "insecure_tls": true
+      "insecure_tls": true,
+      "kind": "ui",
+      "expect_path_prefix": "/fortress/"
     },
     {
       "name": "house",
-      "url": "http://127.0.0.1:8300/api/healthz",
-      "timeout_seconds": 5
+      "url": "http://127.0.0.1:8300/",
+      "timeout_seconds": 5,
+      "kind": "proxy_ui",
+      "forward_name": "house"
     },
     {
       "name": "alertmanager-check",
       "url": "http://127.0.0.1:19093/-/healthy",
-      "timeout_seconds": 5
+      "timeout_seconds": 5,
+      "kind": "http"
     }
   ],
   "proxy_headers": {
