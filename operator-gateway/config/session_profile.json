@@ -1,13 +1,13 @@
 {
   "name": "trl4-default",
   "ssh": {
-    "host": "100.82.194.96",
-    "user": "wera"
+    "host": "env:OPERATOR_SSH_HOST|100.82.194.96",
+    "user": "env:OPERATOR_SSH_USER|wera"
   },
   "forwards": [
     {
       "name": "poly-robot",
-      "local_port": 8765,
+      "local_port": 18765,
       "remote_host": "127.0.0.1",
       "remote_port": 8765
     },
@@ -59,7 +59,7 @@
   "health_checks": [
     {
       "name": "poly-robot",
-      "url": "http://127.0.0.1:8765/healthz",
+      "url": "http://127.0.0.1:18765/healthz",
       "timeout_seconds": 5
     },
     {

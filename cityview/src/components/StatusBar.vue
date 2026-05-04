@@ -4,11 +4,15 @@
       <svg class="sun-icon" width="24" height="24" viewBox="0 0 32 32">
         <defs>
           <radialGradient id="sg" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stop-color="#FFF9E6" />
-            <stop offset="100%" stop-color="#C4A000" />
+            <stop offset="0%"   stop-color="#FFFCF7" />
+            <stop offset="100%" stop-color="#F2B035" />
           </radialGradient>
         </defs>
+        <!-- WeRa brand-golden sun core -->
         <circle cx="16" cy="16" r="7" fill="url(#sg)" />
+        <!-- Horizontal stack lines (WeRa logo mark) -->
+        <rect x="9" y="14" width="14" height="2"  rx="1" fill="rgba(255,255,255,0.55)" />
+        <rect x="10" y="17" width="12" height="1.5" rx="0.75" fill="rgba(255,255,255,0.35)" />
       </svg>
       <span class="title">City of Light</span>
     </div>
@@ -85,7 +89,9 @@ const healthClass = computed(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--sp-lg);
-  background: var(--cream-card);
+  background: rgba(253, 240, 216, 0.80);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--gold-border);
   z-index: 10;
   flex-shrink: 0;
@@ -98,9 +104,11 @@ const healthClass = computed(() => {
 }
 
 .title {
+  font-family: var(--font-display);
   font-size: 18px;
-  font-weight: 600;
-  color: var(--charcoal);
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--brand-navy);
 }
 
 .kpis {
@@ -121,10 +129,11 @@ const healthClass = computed(() => {
 }
 
 .kpi-lbl {
-  font-size: 11px;
-  color: var(--charcoal-light);
+  font-family: var(--font-display);
+  font-size: 9px;
+  color: var(--brand-navy-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1.2px;
 }
 
 .kpi.good .kpi-val { color: var(--status-up); }

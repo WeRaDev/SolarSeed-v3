@@ -1,15 +1,28 @@
 <template>
   <svg class="city-scene" viewBox="0 0 960 600" preserveAspectRatio="xMidYMid meet">
     <defs>
-      <radialGradient id="spiritGrad" cx="40%" cy="35%">
-        <stop offset="0%" stop-color="#FFF9E6" />
-        <stop offset="50%" stop-color="#D4C563" />
-        <stop offset="100%" stop-color="#C4B552" />
+      <!-- WeRa brand gradient: cream centre → golden-mid → brand-golden -->
+      <radialGradient id="spiritGrad" cx="38%" cy="32%">
+        <stop offset="0%"   stop-color="#FFFCF7" />
+        <stop offset="48%"  stop-color="#F5C05D" />
+        <stop offset="100%" stop-color="#F2B035" />
+      </radialGradient>
+      <!-- Healthy glow: emerald green -->
+      <radialGradient id="spiritGradHealthy" cx="38%" cy="32%">
+        <stop offset="0%"   stop-color="#D7F5EC" />
+        <stop offset="55%"  stop-color="#36CCA1" />
+        <stop offset="100%" stop-color="#04BF8A" />
+      </radialGradient>
+      <!-- Critical glow: terracotta -->
+      <radialGradient id="spiritGradCritical" cx="38%" cy="32%">
+        <stop offset="0%"   stop-color="#F7E1D9" />
+        <stop offset="55%"  stop-color="#E18767" />
+        <stop offset="100%" stop-color="#D96941" />
       </radialGradient>
     </defs>
 
-    <!-- Ground plane -->
-    <ellipse cx="480" cy="500" rx="420" ry="80" fill="rgba(168,157,63,0.08)" />
+    <!-- Ground plane — WeRa brand-golden subtle glow -->
+    <ellipse cx="480" cy="500" rx="420" ry="80" fill="rgba(242,176,53,0.07)" />
 
     <!-- Road paths connecting buildings to center -->
     <line

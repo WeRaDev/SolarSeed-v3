@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { existsSync } from 'node:fs'
 
-// Target host: use CITY_HOST env or default to Tailscale IP
-const OPERATOR_GATEWAY_HOST = process.env.OPERATOR_GATEWAY_HOST || 'operator-gateway'
+const runningInDocker = existsSync('/.dockerenv')
+const OPERATOR_GATEWAY_HOST = process.env.OPERATOR_GATEWAY_HOST || (runningInDocker ? 'operator-gateway' : '127.0.0.1')
 const OPERATOR_GATEWAY_PORT = process.env.OPERATOR_GATEWAY_PORT || '8780'
 
 export default defineConfig({

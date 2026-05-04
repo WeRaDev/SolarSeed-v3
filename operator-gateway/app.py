@@ -81,6 +81,16 @@ def _run(cmd: list[str]) -> str:
     if res.returncode != 0:
         raise RuntimeError(res.stderr.strip() or res.stdout.strip() or "command failed")
     return res.stdout.strip()
+def _resolve_profile_str(value: Any, fallback: str = "") -> str:
+    raw = str(value or "").strip()
+    if not raw.startswith("env:"):
+        return raw or fallback
+    spec = raw.split(":", 1)[1]
+    if "|" in spec:
+        env_name, default_value = spec.split("|", 1)
+    else:
+        env_name, default_value = spec, fallback
+    return str(os.environ.get(env_name, default_value)).strip()
 
 
 def _load_profile() -> Profile:
@@ -128,8 +138,8 @@ def _load_profile() -> Profile:
     proxy_headers = raw.get("proxy_headers", {})
     return Profile(
         name=raw.get("name", "default"),
-        ssh_host=str(ssh.get("host", "")).strip(),
-        ssh_user=str(ssh.get("user", "")).strip(),
+        ssh_host=_resolve_profile_str(ssh.get("host", ""), ""),
+        ssh_user=_resolve_profile_str(ssh.get("user", ""), ""),
         forwards=forwards,
         health_checks=checks,
         building_access=access,
@@ -386,6 +396,10 @@ def _start_forward(f: ForwardSpec) -> None:
         "ssh",
         "-o",
         "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "-o",
+        "ExitOnForwardFailure=yes",
         "-o",
         "StrictHostKeyChecking=accept-new",
         "-o",

@@ -95,54 +95,63 @@ const isSelected = computed(() => city.selectedBuildingId === props.building.id)
 </script>
 
 <style scoped>
-.building { transition: filter 0.4s ease; }
+.building { transition: filter 0.5s ease; }
 
-.building.up .wall { fill: var(--cream-card); stroke: var(--gold-olive); stroke-width: 1.5; }
-.building.up .roof { fill: var(--gold-primary); stroke: var(--gold-dark); stroke-width: 1; }
-.building.up .turret { fill: var(--gold-secondary); stroke: var(--gold-olive); stroke-width: 1; }
-.building.up .door { fill: var(--gold-dark); }
-.building.up .door-handle { fill: var(--gold-secondary); }
-.building.up .window { fill: var(--weather-blue); opacity: 0.6; stroke: var(--gold-olive); stroke-width: 0.5; }
-.building.up .chimney { fill: var(--charcoal-light); }
-.building.up .dome-top { fill: var(--gold-secondary); stroke: var(--gold-olive); stroke-width: 1; }
+/* ── Healthy / Up ──────────────────────────────────── */
+.building.up .wall     { fill: var(--brand-golden-pale); stroke: var(--brand-golden-mid); stroke-width: 1.5; }
+.building.up .roof     { fill: var(--brand-golden);      stroke: var(--brand-navy);       stroke-width: 1; }
+.building.up .turret   { fill: var(--brand-golden-mid);  stroke: var(--brand-golden);     stroke-width: 1; }
+.building.up .door     { fill: var(--brand-navy); }
+.building.up .door-handle { fill: var(--brand-golden-mid); }
+/* Windows glow WeRa emerald green — the city is alive */
+.building.up .window   { fill: var(--brand-green-soft);  opacity: 0.75; stroke: var(--brand-green-mid); stroke-width: 0.5; }
+.building.up .chimney  { fill: var(--brand-navy-mid); }
+.building.up .dome-top { fill: var(--brand-golden-mid);  stroke: var(--brand-golden);     stroke-width: 1; }
 .building.up { animation: glow 3s ease-in-out infinite; }
 
-.building.down .wall { fill: #d0d0d0; stroke: #999; stroke-width: 1.5; }
-.building.down .roof { fill: #aaa; stroke: #888; stroke-width: 1; }
-.building.down .turret { fill: #bbb; stroke: #999; stroke-width: 1; }
-.building.down .door { fill: #777; }
-.building.down .door-handle { fill: #999; }
-.building.down .window { fill: #888; opacity: 0.4; }
-.building.down .chimney { fill: #777; }
-.building.down .dome-top { fill: #bbb; stroke: #999; stroke-width: 1; }
-.building.down { filter: grayscale(0.8) brightness(0.7); }
+/* ── Down ──────────────────────────────────────────── */
+.building.down .wall     { fill: var(--brand-terra-pale); stroke: var(--brand-terra-mid); stroke-width: 1.5; }
+.building.down .roof     { fill: var(--brand-terra-soft); stroke: var(--brand-terra);     stroke-width: 1; }
+.building.down .turret   { fill: var(--brand-terra-soft); stroke: var(--brand-terra-mid); stroke-width: 1; }
+.building.down .door     { fill: var(--brand-navy-muted); }
+.building.down .door-handle { fill: var(--brand-terra-soft); }
+.building.down .window   { fill: var(--brand-navy-pale); opacity: 0.35; }
+.building.down .chimney  { fill: var(--brand-navy-light); }
+.building.down .dome-top { fill: var(--brand-terra-soft); stroke: var(--brand-terra-mid); stroke-width: 1; }
+.building.down { filter: grayscale(0.55) brightness(0.75); animation: warning-pulse 2s ease-in-out infinite; }
 
-.building.unknown .wall { fill: #e8e8e8; stroke: #ccc; stroke-width: 1; }
-.building.unknown .roof { fill: #ccc; }
-.building.unknown .turret { fill: #ddd; }
-.building.unknown .door { fill: #aaa; }
-.building.unknown .window { fill: #bbb; opacity: 0.3; }
-.building.unknown .chimney { fill: #aaa; }
-.building.unknown .dome-top { fill: #ddd; stroke: #ccc; stroke-width: 1; }
+/* ── Unknown / loading ─────────────────────────────── */
+.building.unknown .wall     { fill: var(--brand-navy-pale); stroke: var(--brand-navy-light); stroke-width: 1; }
+.building.unknown .roof     { fill: var(--brand-navy-light); }
+.building.unknown .turret   { fill: var(--brand-navy-light); }
+.building.unknown .door     { fill: var(--brand-navy-muted); }
+.building.unknown .window   { fill: var(--brand-navy-light); opacity: 0.25; }
+.building.unknown .chimney  { fill: var(--brand-navy-light); }
+.building.unknown .dome-top { fill: var(--brand-navy-light); stroke: var(--brand-navy-pale); stroke-width: 1; }
+.building.unknown           { opacity: 0.5; }
 
-.building.selected { filter: drop-shadow(0 0 12px var(--gold-glow)) !important; }
+/* ── Selected highlight ────────────────────────────── */
+.building.selected { filter: drop-shadow(0 0 14px var(--gold-glow)) !important; }
 
-.shadow { fill: rgba(0, 0, 0, 0.1); }
+.shadow { fill: rgba(24, 37, 64, 0.12); }
 
 .label {
   font-size: 11px;
   font-weight: 600;
-  fill: var(--charcoal);
+  font-family: 'Josefin Sans', sans-serif;
+  letter-spacing: 0.3px;
+  fill: var(--brand-navy);
 }
 
 .health-badge { stroke: white; stroke-width: 1.5; }
-.building.up .health-badge { fill: var(--status-up); }
-.building.down .health-badge { fill: var(--status-down); }
-.building.unknown .health-badge { fill: #ccc; }
+.building.up      .health-badge { fill: var(--status-up); }
+.building.down    .health-badge { fill: var(--status-down); }
+.building.unknown .health-badge { fill: var(--brand-navy-light); }
 
 .health-icon { fill: white; font-weight: 700; }
 
-.smoke-puff { fill: #ccc; opacity: 0; }
+/* Smoke colour matches brand navy-mid */
+.smoke-puff { fill: var(--brand-navy-light); opacity: 0; }
 .smoke-puff.s1 { animation: smoke 2.5s ease-out infinite; }
 .smoke-puff.s2 { animation: smoke 2.5s ease-out 0.8s infinite; }
 </style>

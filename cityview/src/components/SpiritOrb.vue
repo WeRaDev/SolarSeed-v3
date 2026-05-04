@@ -7,11 +7,14 @@
       <circle r="30" class="pulse-ring r1" />
       <circle r="30" class="pulse-ring r2" />
 
-      <!-- Outer glow -->
+      <!-- Outer glow — mood-keyed -->
       <circle r="22" :class="['orb-glow', city.skyMood]" />
 
-      <!-- Core orb -->
-      <circle r="14" class="orb-core" />
+      <!-- Core orb — gradient switches with mood -->
+      <circle r="14" class="orb-core"
+        :fill="city.skyMood === 'healthy' ? 'url(#spiritGradHealthy)'
+             : city.skyMood === 'critical' ? 'url(#spiritGradCritical)'
+             : 'url(#spiritGrad)'" />
 
       <!-- Inner light -->
       <circle r="6" class="orb-inner" />
@@ -37,26 +40,28 @@ const city = useCityStore()
 
 .pulse-ring {
   fill: none;
-  stroke: var(--gold-primary);
+  stroke: var(--brand-golden);
   stroke-width: 1.5;
   opacity: 0;
   transform-origin: 0 0;
 }
-
 .pulse-ring.r1 { animation: pulse-ring 4s ease-out infinite; }
 .pulse-ring.r2 { animation: pulse-ring 4s ease-out 2s infinite; }
 
-.orb-glow { fill: var(--gold-shadow); }
-.orb-glow.healthy { fill: rgba(196, 181, 82, 0.25); }
-.orb-glow.warning { fill: rgba(232, 169, 75, 0.25); }
-.orb-glow.critical { fill: rgba(244, 67, 54, 0.25); }
+/* Mood-keyed outer glow */
+.orb-glow               { fill: var(--gold-shadow); transition: fill 2s ease; }
+.orb-glow.healthy       { fill: rgba(4,  191, 138, 0.18); }
+.orb-glow.warning       { fill: rgba(242, 176,  53, 0.25); }
+.orb-glow.critical      { fill: rgba(217, 105,  65, 0.30); }
 
-.orb-core { fill: url(#spiritGrad); }
-.orb-inner { fill: #FFF9E6; opacity: 0.8; }
+/* orb-core fill set dynamically in template via :fill binding */
+.orb-inner { fill: #FFFCF7; opacity: 0.85; }
 
 .label {
   font-size: 12px;
   font-weight: 700;
-  fill: var(--gold-dark);
+  font-family: 'Josefin Sans', sans-serif;
+  letter-spacing: 0.5px;
+  fill: var(--brand-navy);
 }
 </style>

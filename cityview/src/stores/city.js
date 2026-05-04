@@ -13,6 +13,7 @@ const BUILDING_DEFS = [
   { id: 'fortress', label: 'Fortress', desc: 'Nextcloud AIO', jobs: ['nextcloud'], icon: 'castle', x: 340, y: 480, appUrl: '/fortress/', appLabel: 'Open Nextcloud AIO →', mem: '~2 GB', port: 8080 },
   { id: 'house', label: 'House', desc: 'PostgreSQL 16 + Gitea governance', jobs: ['postgres'], icon: 'house', x: 620, y: 480, appUrl: '/house/', appLabel: 'Open Gitea →', mem: '512 MB', port: 5432 },
 ]
+const BUILDING_TO_PRIMARY_JOB = Object.fromEntries(BUILDING_DEFS.map((def) => [def.id, def.jobs[0]]))
 
 async function fetchJson(url) {
   try {
@@ -66,6 +67,7 @@ export const useCityStore = defineStore('city', {
     operatorBuildingAccess: {},
     operatorBusy: false,
     operatorError: null,
+    demoHealth: {},
   }),
 
   getters: {
@@ -81,7 +83,7 @@ export const useCityStore = defineStore('city', {
         // Determine health from Spirit status first, Prometheus targets as fallback
         let health = 'unknown'
         for (const job of def.jobs) {
-          const spiritState = spiritBuildings[job]
+          const spiritState = spiritBuildings[job] ?? spiritBuildings[def.id]
           const promState = targetMap[job]
           if (spiritState === 'up' || promState === 'up') {
             health = 'up'
@@ -192,9 +194,39 @@ export const useCityStore = defineStore('city', {
         } else {
           this.polyRobotOk = false
         }
+
+        const noLiveSignals = !health && !status && !targets && !operatorConnection && !operatorAccess && !agents && !polyRobotHealth
+        if (noLiveSignals) {
+          this._applyDemoHealth()
+        }
       } catch (e) {
         this.pollError = e.message
+        this._applyDemoHealth()
       }
+    },
+
+    // Seed and gently fluctuate demo health values
+    _applyDemoHealth() {
+      const BASE = {
+        'golden-mine': 84, agency: 91, eventbus: 78,
+        library: 88,  university: 76, fortress: 94, house: 82,
+      }
+      // Prime the spiritStatus buildings map with simulated up/down
+      const buildings = {}
+      for (const [id, base] of Object.entries(BASE)) {
+        // Fluctuate ±6 % each cycle; never drop below 10
+        const prev  = this.demoHealth[id] ?? base
+        const next  = Math.max(10, Math.min(100, prev + (Math.random() * 12 - 6)))
+        const state = next > 35 ? 'up' : 'down'
+        const jobKey = BUILDING_TO_PRIMARY_JOB[id]
+        buildings[id] = state
+        if (jobKey) buildings[jobKey] = state
+        this.demoHealth[id] = next
+      }
+      // Inject into spiritStatus so the buildings getter picks it up
+      this.spiritStatus = { ...this.spiritStatus, buildings }
+      this.openfangOk   = (this.demoHealth.agency ?? 91) > 35
+      this.polyRobotOk  = (this.demoHealth['golden-mine'] ?? 84) > 35
     },
 
     selectBuilding(id) {
