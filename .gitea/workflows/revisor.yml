@@ -25,7 +25,7 @@ jobs:
             test -f README.md      && echo "README.md OK"      || echo "MISSING: README.md"
             test -f WARP.md        && echo "WARP.md OK"        || (echo "MISSING: WARP.md"; false)
             test -f CONTRIBUTING.md && echo "CONTRIBUTING.md OK" || echo "MISSING: CONTRIBUTING.md"
-          } 2>&1 | tee /tmp/revisor_baseline.txt
+          } 2>&1 | tee /tmp/revisor_${GITHUB_RUN_ID}_baseline.txt
           exit ${PIPESTATUS[0]}
 
       - name: Python syntax check (compile)
@@ -33,10 +33,10 @@ jobs:
         continue-on-error: true
         run: |
           if find . -name "*.py" -not -path "./.git/*" | grep -q .; then
-            python3 -m compileall -q . 2>&1 | tee /tmp/revisor_compile.txt
+            python3 -m compileall -q . 2>&1 | tee /tmp/revisor_${GITHUB_RUN_ID}_compile.txt
             exit ${PIPESTATUS[0]}
           else
-            echo "No Python files found; skipping" | tee /tmp/revisor_compile.txt
+            echo "No Python files found; skipping" | tee /tmp/revisor_${GITHUB_RUN_ID}_compile.txt
           fi
 
       - name: Docker Compose config check
@@ -44,10 +44,10 @@ jobs:
         continue-on-error: true
         run: |
           if ls docker-compose*.yml 2>/dev/null | grep -q .; then
-            docker compose config --quiet 2>&1 | tee /tmp/revisor_docker.txt
+            docker compose config --quiet 2>&1 | tee /tmp/revisor_${GITHUB_RUN_ID}_docker.txt
             exit ${PIPESTATUS[0]}
           else
-            echo "No docker-compose.yml found; skipping" | tee /tmp/revisor_docker.txt
+            echo "No docker-compose.yml found; skipping" | tee /tmp/revisor_${GITHUB_RUN_ID}_docker.txt
           fi
 
       - name: Post Revisor review comment
@@ -61,6 +61,7 @@ jobs:
           COMPILE_RESULT: ${{ steps.compile.outcome }}
           DOCKER_RESULT: ${{ steps.docker.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REVISOR_PREFIX: /tmp/revisor_${{ github.run_id }}
         run: |
           python3 - <<'PY'
           import json, os, urllib.request
@@ -77,9 +78,9 @@ jobs:
               return "PASS" if o == "success" else "FAIL"
 
           checks = [
-              ("Baseline docs",          os.environ["BASELINE_RESULT"], "/tmp/revisor_baseline.txt"),
-              ("Python syntax (compile)", os.environ["COMPILE_RESULT"], "/tmp/revisor_compile.txt"),
-              ("Docker Compose config",   os.environ["DOCKER_RESULT"],  "/tmp/revisor_docker.txt"),
+              ("Baseline docs",          os.environ["BASELINE_RESULT"], f"{os.environ.get(\'REVISOR_PREFIX\', \'/tmp/revisor\')}_baseline.txt"),
+              ("Python syntax (compile)", os.environ["COMPILE_RESULT"], f"{os.environ.get(\'REVISOR_PREFIX\', \'/tmp/revisor\')}_compile.txt"),
+              ("Docker Compose config",   os.environ["DOCKER_RESULT"],  f"{os.environ.get(\'REVISOR_PREFIX\', \'/tmp/revisor\')}_docker.txt"),
           ]
 
           all_pass   = all(o == "success" for _, o, _ in checks)
