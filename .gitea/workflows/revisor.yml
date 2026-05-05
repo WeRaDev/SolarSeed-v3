@@ -78,9 +78,9 @@ jobs:
               return "PASS" if o == "success" else "FAIL"
 
           checks = [
-              ("Baseline docs",          os.environ["BASELINE_RESULT"], f"{os.environ.get(\'REVISOR_PREFIX\', \'/tmp/revisor\')}_baseline.txt"),
-              ("Python syntax (compile)", os.environ["COMPILE_RESULT"], f"{os.environ.get(\'REVISOR_PREFIX\', \'/tmp/revisor\')}_compile.txt"),
-              ("Docker Compose config",   os.environ["DOCKER_RESULT"],  f"{os.environ.get(\'REVISOR_PREFIX\', \'/tmp/revisor\')}_docker.txt"),
+              ("Baseline docs",          os.environ["BASELINE_RESULT"], f"{os.environ.get('REVISOR_PREFIX', '/tmp/revisor')}_baseline.txt"),
+              ("Python syntax (compile)", os.environ["COMPILE_RESULT"], f"{os.environ.get('REVISOR_PREFIX', '/tmp/revisor')}_compile.txt"),
+              ("Docker Compose config",   os.environ["DOCKER_RESULT"],  f"{os.environ.get('REVISOR_PREFIX', '/tmp/revisor')}_docker.txt"),
           ]
 
           all_pass   = all(o == "success" for _, o, _ in checks)
