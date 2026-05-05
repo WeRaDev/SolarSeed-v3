@@ -13,11 +13,10 @@ const BUILDING_DEFS = [
   { id: 'fortress', label: 'Fortress', desc: 'Nextcloud AIO', jobs: ['nextcloud'], icon: 'castle', x: 340, y: 480, appUrl: '/fortress/', appLabel: 'Open Nextcloud AIO →', mem: '~2 GB', port: 8080 },
   { id: 'house', label: 'House', desc: 'PostgreSQL 16 + Gitea governance', jobs: ['postgres'], icon: 'house', x: 620, y: 480, appUrl: '/house/', appLabel: 'Open Gitea →', mem: '512 MB', port: 5432 },
 ]
-const BUILDING_TO_PRIMARY_JOB = Object.fromEntries(BUILDING_DEFS.map((def) => [def.id, def.jobs[0]]))
 
 async function fetchJson(url) {
   try {
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
     if (!res.ok) return null
     return await res.json()
   } catch {
@@ -67,7 +66,6 @@ export const useCityStore = defineStore('city', {
     operatorBuildingAccess: {},
     operatorBusy: false,
     operatorError: null,
-    demoHealth: {},
   }),
 
   getters: {
@@ -80,10 +78,9 @@ export const useCityStore = defineStore('city', {
 
       return BUILDING_DEFS.map((def) => {
         const access = state.operatorBuildingAccess[def.id]
-        // Determine health from Spirit status first, Prometheus targets as fallback
         let health = 'unknown'
         for (const job of def.jobs) {
-          const spiritState = spiritBuildings[job] ?? spiritBuildings[def.id]
+          const spiritState = spiritBuildings[job]
           const promState = targetMap[job]
           if (spiritState === 'up' || promState === 'up') {
             health = 'up'
@@ -91,7 +88,6 @@ export const useCityStore = defineStore('city', {
           }
           if (spiritState === 'down' || promState === 'down') health = 'down'
         }
-        // Special overrides for services without Prometheus scrape targets
         if (def.id === 'agency') {
           health = state.openfangOk ? 'up' : 'down'
         }
@@ -100,10 +96,7 @@ export const useCityStore = defineStore('city', {
         }
         if (access?.health_hint === 'up') health = 'up'
         if (access?.health_hint === 'down') health = 'down'
-        // Redis and PostgreSQL have no Prometheus target but Spirit knows them
-        // via compose healthchecks -- if Spirit doesn't report them, check compose status
         if (health === 'unknown' && (def.id === 'eventbus' || def.id === 'house')) {
-          // These services are healthy if Spirit itself is healthy (they're compose dependencies)
           if (state.spiritHealth?.status === 'healthy') health = 'up'
         }
         return {
@@ -148,7 +141,7 @@ export const useCityStore = defineStore('city', {
       this.lastPollTime = new Date().toISOString()
       this.pollError = null
       try {
-        const [health, status, refl, meditation, agents, targets, polyRobotHealth, operatorConnection, operatorAccess] = await Promise.all([
+        const results = await Promise.allSettled([
           fetchJson('/spirit/health'),
           fetchJson('/spirit/api/v1/status'),
           fetchJson('/spirit/api/v1/reflection'),
@@ -160,16 +153,18 @@ export const useCityStore = defineStore('city', {
           fetchJson('/operator/api/v1/access/buildings'),
         ])
 
-        if (health) this.spiritHealth = health
+        const [health, status, refl, meditation, agents, targets, polyRobotHealth, operatorConnection, operatorAccess]
+          = results.map(r => r.status === 'fulfilled' ? r.value : null)
+
+        if (health)  this.spiritHealth = health
         if (status) {
           this.spiritStatus = status
           this.pendingApprovals = status.pending_approvals || []
         }
-        if (refl) this.reflection = refl.reflection || null
-        if (meditation) this.meditation = meditation.meditation || null
+        if (refl)       this.reflection  = refl.reflection  || null
+        if (meditation) this.meditation  = meditation.meditation || null
         if (agents) {
-          // OpenFang v0.5+ returns array or object with agents
-          this.agents = Array.isArray(agents) ? agents : (agents.agents || [])
+          this.agents    = Array.isArray(agents) ? agents : (agents.agents || [])
           this.openfangOk = true
         } else {
           this.openfangOk = false
@@ -185,48 +180,42 @@ export const useCityStore = defineStore('city', {
           this.operatorBuildingAccess = toBuildingAccessMap(operatorAccess)
         }
 
-        const operatorPolyRobot = operatorConnection?.health_checks?.find((check) => check.name === 'poly-robot')
+        const operatorPolyRobot = operatorConnection?.health_checks?.find(c => c.name === 'poly-robot')
         if (operatorPolyRobot) {
           this.polyRobotOk = Boolean(operatorPolyRobot.ok)
         } else if (polyRobotHealth) {
-          const status = String(polyRobotHealth.status || '').toLowerCase()
-          this.polyRobotOk = status ? ['ok', 'healthy', 'up'].includes(status) : true
+          const s = String(polyRobotHealth.status || '').toLowerCase()
+          this.polyRobotOk = s ? ['ok', 'healthy', 'up'].includes(s) : true
         } else {
           this.polyRobotOk = false
         }
-
-        const noLiveSignals = !health && !status && !targets && !operatorConnection && !operatorAccess && !agents && !polyRobotHealth
-        if (noLiveSignals) {
-          this._applyDemoHealth()
-        }
       } catch (e) {
         this.pollError = e.message
+      }
+
+      // Demo fallback — show a living city when all APIs are offline
+      const allUnknown = this.buildings.every(b => b.health === 'unknown')
+      if (allUnknown) {
         this._applyDemoHealth()
       }
     },
 
-    // Seed and gently fluctuate demo health values
     _applyDemoHealth() {
       const BASE = {
         'golden-mine': 84, agency: 91, eventbus: 78,
         library: 88,  university: 76, fortress: 94, house: 82,
       }
-      // Prime the spiritStatus buildings map with simulated up/down
       const buildings = {}
       for (const [id, base] of Object.entries(BASE)) {
-        // Fluctuate ±6 % each cycle; never drop below 10
-        const prev  = this.demoHealth[id] ?? base
-        const next  = Math.max(10, Math.min(100, prev + (Math.random() * 12 - 6)))
-        const state = next > 35 ? 'up' : 'down'
-        const jobKey = BUILDING_TO_PRIMARY_JOB[id]
-        buildings[id] = state
-        if (jobKey) buildings[jobKey] = state
-        this.demoHealth[id] = next
+        const prev = this._demoHealth?.[id] ?? base
+        const next = Math.max(10, Math.min(100, prev + (Math.random() * 12 - 6)))
+        buildings[id] = next > 35 ? 'up' : 'down'
+        if (!this._demoHealth) this._demoHealth = {}
+        this._demoHealth[id] = next
       }
-      // Inject into spiritStatus so the buildings getter picks it up
       this.spiritStatus = { ...this.spiritStatus, buildings }
-      this.openfangOk   = (this.demoHealth.agency ?? 91) > 35
-      this.polyRobotOk  = (this.demoHealth['golden-mine'] ?? 84) > 35
+      this.openfangOk   = (this._demoHealth.agency ?? 91) > 35
+      this.polyRobotOk  = (this._demoHealth['golden-mine'] ?? 84) > 35
     },
 
     selectBuilding(id) {
@@ -248,8 +237,8 @@ export const useCityStore = defineStore('city', {
         fetchJson('/operator/api/v1/access/buildings'),
       ])
       if (connection) this.operatorConnection = connection
-      if (profile) this.operatorProfile = profile
-      if (access) this.operatorBuildingAccess = toBuildingAccessMap(access)
+      if (profile)    this.operatorProfile    = profile
+      if (access)     this.operatorBuildingAccess = toBuildingAccessMap(access)
       if (!connection) this.operatorError = 'Connection status unavailable'
       else this.operatorError = null
     },
@@ -296,7 +285,6 @@ export const useCityStore = defineStore('city', {
           body: JSON.stringify({ index }),
         })
         if (res.ok) {
-          // Remove from local list optimistically
           this.pendingApprovals.splice(index, 1)
         }
       } catch {

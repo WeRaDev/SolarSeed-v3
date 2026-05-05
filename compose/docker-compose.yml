@@ -268,48 +268,6 @@ services:
       retries: 3
     networks:
       - city_internal
-  operator-gateway:
-    build:
-      context: ../operator-gateway
-    container_name: city-operator-gateway
-    restart: unless-stopped
-    environment:
-      OPERATOR_PROFILE_PATH: /app/config/session_profile.json
-      POLY_ROBOT_OPERATOR_TOKEN: ${POLY_ROBOT_OPERATOR_TOKEN:-}
-    volumes:
-      - ../operator-gateway/config:/app/config
-      - ${HOME}/.ssh:/root/.ssh:ro
-    ports:
-      - "8780:8780"
-    networks:
-      - city_internal
-  cityview:
-    image: node:20-alpine
-    container_name: city-cityview
-    restart: unless-stopped
-    working_dir: /app
-    environment:
-      OPERATOR_GATEWAY_HOST: operator-gateway
-      OPERATOR_GATEWAY_PORT: 8780
-    volumes:
-      - ../cityview:/app
-      - cityview_node_modules:/app/node_modules
-    command: sh -lc "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
-    ports:
-      - "5173:5173"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      operator-gateway:
-        condition: service_started
-      spirit:
-        condition: service_healthy
-      openfang:
-        condition: service_healthy
-      prometheus:
-        condition: service_healthy
-    networks:
-      - city_internal
 
   # Nextcloud (Fortress) is managed externally by the FilantropiaSolar compose stack.
   # Connect it to city_internal at runtime:
@@ -334,4 +292,3 @@ volumes:
   spirit_memory:
   spirit_logs:
   openfang_data:
-  cityview_node_modules:
