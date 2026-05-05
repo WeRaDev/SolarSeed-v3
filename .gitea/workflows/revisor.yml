@@ -1,0 +1,118 @@
+name: solarseed-v3-revisor
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  revisor-qa:
+    name: Revisor QA Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          github-server-url: http://127.0.0.1:3000
+
+      - name: Baseline documentation check
+        id: baseline
+        continue-on-error: true
+        run: |
+          {
+            test -f README.md      && echo "README.md OK"      || echo "MISSING: README.md"
+            test -f WARP.md        && echo "WARP.md OK"        || (echo "MISSING: WARP.md"; false)
+            test -f CONTRIBUTING.md && echo "CONTRIBUTING.md OK" || echo "MISSING: CONTRIBUTING.md"
+          } 2>&1 | tee /tmp/revisor_${GITHUB_RUN_ID}_baseline.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Python syntax check (compile)
+        id: compile
+        continue-on-error: true
+        run: |
+          if find . -name "*.py" -not -path "./.git/*" | grep -q .; then
+            python3 -m compileall -q . 2>&1 | tee /tmp/revisor_${GITHUB_RUN_ID}_compile.txt
+            exit ${PIPESTATUS[0]}
+          else
+            echo "No Python files found; skipping" | tee /tmp/revisor_${GITHUB_RUN_ID}_compile.txt
+          fi
+
+      - name: Docker Compose config check
+        id: docker
+        continue-on-error: true
+        run: |
+          if ls docker-compose*.yml 2>/dev/null | grep -q .; then
+            docker compose config --quiet 2>&1 | tee /tmp/revisor_${GITHUB_RUN_ID}_docker.txt
+            exit ${PIPESTATUS[0]}
+          else
+            echo "No docker-compose.yml found; skipping" | tee /tmp/revisor_${GITHUB_RUN_ID}_docker.txt
+          fi
+
+      - name: Post Revisor review comment
+        if: always()
+        env:
+          WERA_GITEA_TOKEN: ${{ secrets.WERA_GITEA_TOKEN }}
+          GITEA_URL: http://127.0.0.1:3000
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.number }}
+          BASELINE_RESULT: ${{ steps.baseline.outcome }}
+          COMPILE_RESULT: ${{ steps.compile.outcome }}
+          DOCKER_RESULT: ${{ steps.docker.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REVISOR_PREFIX: /tmp/revisor_${{ github.run_id }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          from pathlib import Path
+
+          def read_tail(path, max_chars=2000):
+              try:
+                  text = Path(path).read_text(encoding="utf-8").strip()
+                  return text[-max_chars:] if len(text) > max_chars else text
+              except Exception:
+                  return "(output not available)"
+
+          def icon(o):
+              return "PASS" if o == "success" else "FAIL"
+
+          checks = [
+              ("Baseline docs",          os.environ["BASELINE_RESULT"], f"{os.environ.get('REVISOR_PREFIX', '/tmp/revisor')}_baseline.txt"),
+              ("Python syntax (compile)", os.environ["COMPILE_RESULT"], f"{os.environ.get('REVISOR_PREFIX', '/tmp/revisor')}_compile.txt"),
+              ("Docker Compose config",   os.environ["DOCKER_RESULT"],  f"{os.environ.get('REVISOR_PREFIX', '/tmp/revisor')}_docker.txt"),
+          ]
+
+          all_pass   = all(o == "success" for _, o, _ in checks)
+          any_failed = any(o == "failure"  for _, o, _ in checks)
+          verdict = "PASS" if all_pass else ("CHANGES REQUIRED" if any_failed else "PASS WITH RISK")
+
+          run_url = os.environ.get("RUN_URL", "")
+          lines = ["## Revisor QA Audit", "", f"**QA Verdict: {verdict}**  ·  [workflow run]({run_url})", "", "| Check | Result |", "|---|---|"]
+          for name, outcome, _ in checks:
+              lines.append(f"| {name} | {icon(outcome)} |")
+          failing = [(n, p) for n, o, p in checks if o != "success"]
+          if failing:
+              lines += ["", "### Failing check output"]
+              for name, path in failing:
+                  lines += [f"<details><summary>{name}</summary>", "", "```", read_tail(path), "```", "</details>", ""]
+
+          body = "\n".join(lines)
+          repo = os.environ["GITHUB_REPOSITORY"]
+          owner, repo_name = repo.split("/", 1)
+          token = os.environ.get("WERA_GITEA_TOKEN", "")
+          gitea_url = os.environ["GITEA_URL"]
+          pr_number = os.environ["PR_NUMBER"]
+
+          if not token:
+              print("WERA_GITEA_TOKEN not set; skipping")
+          else:
+              url = f"{gitea_url}/api/v1/repos/{owner}/{repo_name}/issues/{pr_number}/comments"
+              req = urllib.request.Request(url, data=json.dumps({"body": body}).encode("utf-8"),
+                  headers={"Authorization": f"token {token}", "Content-Type": "application/json"}, method="POST")
+              try:
+                  with urllib.request.urlopen(req) as resp:
+                      print(f"Revisor comment posted: HTTP {resp.status} | Verdict: {verdict}")
+              except Exception as exc:
+                  print(f"Failed to post review comment: {exc}")
+          PY

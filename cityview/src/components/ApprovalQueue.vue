@@ -1,158 +1,125 @@
 <template>
-  <transition name="slide">
-    <aside v-if="city.questPanelOpen" class="quest-panel">
-      <div class="panel-header">
-        <h3>Approval Quests</h3>
-        <button class="close-btn" @click="city.toggleQuestPanel()">&times;</button>
+  <Transition name="fade">
+    <div v-if="city.questPanelOpen" class="approval-queue" role="dialog" aria-modal="true" aria-label="Approval queue">
+      <div class="queue-header">
+        <span class="queue-title">Pending Approvals</span>
+        <button class="close-btn" @click="city.toggleQuestPanel()" aria-label="Close">✕</button>
       </div>
 
-      <div v-if="city.pendingApprovals.length === 0" class="empty">
-        No pending quests. The City is at peace.
-      </div>
-
-      <div
-        v-for="(item, i) in city.pendingApprovals"
-        :key="i"
-        class="quest-card"
-        :class="item.severity"
-      >
-        <div class="quest-severity">{{ item.severity }}</div>
-        <div class="quest-action">{{ item.action }}</div>
-        <div class="quest-reason">{{ item.reason }}</div>
-        <div class="quest-footer">
-          <span class="quest-time">{{ formatTime(item.timestamp) }}</span>
+      <div class="queue-body">
+        <div v-if="city.pendingApprovals.length === 0" class="queue-empty">
+          No pending approvals — the city is at peace.
+        </div>
+        <div
+          v-for="(approval, i) in city.pendingApprovals"
+          :key="i"
+          class="approval-item"
+        >
+          <div class="approval-text">{{ approval.description || approval.action || JSON.stringify(approval) }}</div>
           <button class="approve-btn" @click="city.approveAction(i)">Approve</button>
         </div>
       </div>
-    </aside>
-  </transition>
+    </div>
+  </Transition>
 </template>
 
 <script setup>
 import { useCityStore } from '../stores/city.js'
-
 const city = useCityStore()
-
-function formatTime(ts) {
-  if (!ts) return ''
-  const d = new Date(ts)
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
 </script>
 
 <style scoped>
-.quest-panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 320px;
-  background: var(--cream-card);
-  border-left: 1px solid var(--gold-border);
-  z-index: 20;
+.approval-queue {
+  position: fixed;
+  right: var(--sp-lg);
+  top: 72px;
+  width: 340px;
+  max-height: 60vh;
   display: flex;
   flex-direction: column;
-  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+  background: rgba(253, 240, 216, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--gold-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px var(--navy-shadow);
+  z-index: 15;
+  animation: fade-in 0.2s ease;
 }
 
-.slide-enter-active,
-.slide-leave-active {
-  transition: transform 0.3s ease;
-}
-
-.slide-enter-from,
-.slide-leave-to {
-  transform: translateX(100%);
-}
-
-.panel-header {
+.queue-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: var(--sp-md);
+  justify-content: space-between;
+  padding: var(--sp-md) var(--sp-lg);
   border-bottom: 1px solid var(--gold-border);
+  flex-shrink: 0;
 }
 
-.panel-header h3 {
-  font-size: 16px;
+.queue-title {
+  font-family: var(--font-display);
+  font-size: 12px;
   font-weight: 700;
-  color: var(--charcoal);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--brand-navy);
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 22px;
   cursor: pointer;
-  color: var(--charcoal-light);
+  font-size: 16px;
+  color: var(--brand-navy-muted);
 }
+.close-btn:hover { color: var(--brand-navy); }
 
-.empty {
-  padding: var(--sp-lg);
-  text-align: center;
-  color: var(--charcoal-light);
-  font-size: 13px;
-}
-
-.quest-card {
-  margin: var(--sp-sm) var(--sp-md);
-  padding: var(--sp-md);
-  border-radius: var(--radius-md);
-  border-left: 4px solid var(--charcoal-light);
-  background: white;
-}
-
-.quest-card.critical { border-left-color: var(--status-down); }
-.quest-card.warning { border-left-color: var(--status-warning); }
-
-.quest-severity {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 2px;
-}
-
-.quest-card.critical .quest-severity { color: var(--status-down); }
-.quest-card.warning .quest-severity { color: var(--status-warning); }
-
-.quest-action {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--charcoal);
-}
-
-.quest-reason {
-  font-size: 12px;
-  color: var(--charcoal-light);
-  margin-top: 2px;
-}
-
-.quest-footer {
+.queue-body {
+  overflow-y: auto;
+  padding: var(--sp-md) var(--sp-lg);
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: var(--sp-sm);
+  flex-direction: column;
+  gap: var(--sp-sm);
 }
 
-.quest-time {
-  font-size: 10px;
-  color: var(--charcoal-light);
+.queue-empty {
+  font-size: 13px;
+  color: var(--brand-navy-muted);
+  font-style: italic;
+  text-align: center;
+  padding: var(--sp-md) 0;
+}
+
+.approval-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-sm);
+  padding: var(--sp-sm);
+  background: rgba(255,255,255,0.5);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gold-border);
+}
+
+.approval-text {
+  flex: 1;
+  font-size: 12px;
+  color: var(--brand-navy);
+  line-height: 1.45;
 }
 
 .approve-btn {
-  background: var(--gold-primary);
-  color: var(--charcoal);
+  flex-shrink: 0;
+  background: var(--brand-green);
+  color: white;
   border: none;
   border-radius: var(--radius-sm);
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 150ms;
 }
+.approve-btn:hover { background: var(--brand-green-mid); }
 
-.approve-btn:hover {
-  background: var(--gold-secondary);
-}
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(-8px); }
 </style>

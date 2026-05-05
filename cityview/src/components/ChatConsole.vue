@@ -1,188 +1,112 @@
 <template>
-  <transition name="console-slide">
-    <aside v-if="visible" class="console">
+  <Transition name="slide-right">
+    <div v-if="visible" class="chat-console" role="dialog" aria-modal="true" :aria-label="`${targetName} console`">
       <div class="console-header">
         <div class="console-title">
-          <span class="console-icon" :class="targetType">{{ targetType === 'spirit' ? 'S' : initials }}</span>
-          <span>{{ targetName }}</span>
+          <span class="console-dot" :class="targetType" />
+          {{ targetName }}
         </div>
-        <button class="close-btn" @click="$emit('close')">&times;</button>
+        <button class="close-btn" @click="$emit('close')" aria-label="Close console">✕</button>
       </div>
 
-      <div class="messages" ref="messagesEl">
+      <div class="console-body" ref="bodyEl">
         <div v-for="(msg, i) in messages" :key="i" class="msg" :class="msg.role">
-          <span class="msg-role">{{ msg.role === 'user' ? 'You' : targetName }}</span>
+          <span class="msg-role">{{ msg.role === 'assistant' ? targetName : 'You' }}</span>
           <p class="msg-text">{{ msg.content }}</p>
         </div>
-        <div v-if="loading" class="msg assistant">
-          <span class="msg-role">{{ targetName }}</span>
-          <p class="msg-text thinking">thinking...</p>
+        <div v-if="messages.length === 0" class="console-empty">
+          Commune with {{ targetName }}…
         </div>
       </div>
 
-      <form class="input-row" @submit.prevent="send">
+      <form class="console-input" @submit.prevent="send">
         <input
-          v-model="input"
-          :placeholder="`Talk to ${targetName}...`"
-          :disabled="loading"
-          class="chat-input"
-          autofocus
+          v-model="draft"
+          class="input-field"
+          :placeholder="`Message ${targetName}…`"
+          :disabled="sending"
+          autocomplete="off"
         />
-        <button type="submit" class="send-btn" :disabled="loading || !input.trim()">&#x27A4;</button>
+        <button type="submit" class="send-btn" :disabled="!draft.trim() || sending">
+          {{ sending ? '…' : '↑' }}
+        </button>
       </form>
-    </aside>
-  </transition>
+    </div>
+  </Transition>
 </template>
 
 <script setup>
-import { ref, watch, nextTick, computed } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps({
-  visible: Boolean,
-  targetType: { type: String, default: 'agent' },   // 'agent' or 'spirit'
-  targetName: { type: String, default: 'assistant' },
-  targetId: { type: String, default: '' },
+  visible:    { type: Boolean, default: false },
+  targetType: { type: String,  default: 'spirit' },
+  targetName: { type: String,  default: 'Spirit' },
+  targetId:   { type: String,  default: '' },
 })
 defineEmits(['close'])
 
-const input = ref('')
 const messages = ref([])
-const loading = ref(false)
-const messagesEl = ref(null)
+const draft    = ref('')
+const sending  = ref(false)
+const bodyEl   = ref(null)
 
-const initials = computed(() =>
-  props.targetName.split('-').map(w => (w[0] || '').toUpperCase()).join('').slice(0, 2)
-)
-
-// Scroll to bottom when messages change
-watch(messages, async () => {
-  await nextTick()
-  if (messagesEl.value) {
-    messagesEl.value.scrollTop = messagesEl.value.scrollHeight
-  }
-}, { deep: true })
-
-// Reset messages when target changes
-watch(() => props.targetName, () => {
-  messages.value = []
-})
+// Clear conversation when target changes
+watch(() => props.targetName, () => { messages.value = [] })
 
 async function send() {
-  const text = input.value.trim()
+  const text = draft.value.trim()
   if (!text) return
-
+  draft.value = ''
   messages.value.push({ role: 'user', content: text })
-  input.value = ''
-  loading.value = true
-
+  sending.value = true
   try {
-    if (props.targetType === 'spirit') {
-      await sendToSpirit(text)
-    } else {
-      await sendToAgent(text)
-    }
-  } catch (e) {
-    messages.value.push({ role: 'assistant', content: `Error: ${e.message}` })
+    const endpoint = props.targetType === 'spirit'
+      ? '/spirit/api/v1/chat'
+      : `/openfang/api/agents/${props.targetId}/chat`
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text }),
+    })
+    const data = res.ok ? await res.json() : null
+    messages.value.push({
+      role: 'assistant',
+      content: data?.reply || data?.message || '(no response)',
+    })
+  } catch {
+    messages.value.push({ role: 'assistant', content: '(connection error)' })
   } finally {
-    loading.value = false
+    sending.value = false
+    setTimeout(() => {
+      if (bodyEl.value) bodyEl.value.scrollTop = bodyEl.value.scrollHeight
+    }, 50)
   }
-}
-
-async function sendToAgent(text) {
-  // Use OpenFang's OpenAI-compatible streaming endpoint
-  const res = await fetch('/openfang/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: props.targetName,
-      messages: [
-        ...messages.value.filter(m => m.role !== 'assistant' || !m.content.startsWith('Error:')),
-        { role: 'user', content: text },
-      ].slice(-10), // Keep last 10 messages for context
-      stream: false,
-    }),
-  })
-
-  if (!res.ok) {
-    throw new Error(`Agent responded with ${res.status}`)
-  }
-
-  const data = await res.json()
-  const reply = data.choices?.[0]?.message?.content || 'No response'
-  messages.value.push({ role: 'assistant', content: reply })
-}
-
-async function sendToSpirit(text) {
-  // Spirit is observation-only. We query it via LLM with Spirit's context.
-  // First get Spirit's current state to provide context
-  const [statusRes, reflRes] = await Promise.all([
-    fetch('/spirit/api/v1/status').then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch('/spirit/api/v1/reflection').then(r => r.ok ? r.json() : null).catch(() => null),
-  ])
-
-  const spiritContext = [
-    statusRes ? `Buildings: ${JSON.stringify(statusRes.buildings)}` : '',
-    statusRes?.pending_approvals?.length ? `Pending approvals: ${statusRes.pending_approvals.length}` : 'No pending approvals.',
-    reflRes?.reflection?.text ? `Latest reflection: ${reflRes.reflection.text}` : '',
-  ].filter(Boolean).join('\n')
-
-  // Send to LLM with Spirit persona
-  const res = await fetch('/openfang/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'assistant',
-      messages: [
-        {
-          role: 'system',
-          content: `You are the Spirit of the City of Light -- the self-aware heartbeat of a sovereign digital infrastructure. You observe but cannot act. You speak with the calm authority of one who sees the whole City at once. Here is your current state:\n${spiritContext}\n\nAnswer the Admin's question based on your observations. Be concise and grounded in data.`,
-        },
-        ...messages.value.slice(-6),
-        { role: 'user', content: text },
-      ],
-      stream: false,
-    }),
-  })
-
-  if (!res.ok) throw new Error(`Spirit LLM responded with ${res.status}`)
-  const data = await res.json()
-  const reply = data.choices?.[0]?.message?.content || 'The Spirit is silent.'
-  messages.value.push({ role: 'assistant', content: reply })
 }
 </script>
 
 <style scoped>
-.console {
-  position: absolute;
-  bottom: 0;
+.chat-console {
+  position: fixed;
   right: 0;
+  top: 56px;
+  bottom: 0;
   width: 380px;
-  height: 480px;
-  background: var(--cream-card);
-  border-left: 1px solid var(--gold-border);
-  border-top: 1px solid var(--gold-border);
-  border-radius: var(--radius-lg) 0 0 0;
-  z-index: 30;
   display: flex;
   flex-direction: column;
-  box-shadow: -4px -4px 16px rgba(0, 0, 0, 0.1);
-}
-
-.console-slide-enter-active,
-.console-slide-leave-active {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-.console-slide-enter-from,
-.console-slide-leave-to {
-  transform: translateY(100%);
-  opacity: 0;
+  background: rgba(253, 240, 216, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-left: 1px solid var(--gold-border);
+  z-index: 20;
+  box-shadow: -4px 0 24px var(--navy-shadow);
 }
 
 .console-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: var(--sp-sm) var(--sp-md);
+  justify-content: space-between;
+  padding: var(--sp-md) var(--sp-lg);
   border-bottom: 1px solid var(--gold-border);
   flex-shrink: 0;
 }
@@ -191,106 +115,104 @@ async function sendToSpirit(text) {
   display: flex;
   align-items: center;
   gap: var(--sp-sm);
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-weight: 700;
   font-size: 14px;
+  color: var(--brand-navy);
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-.console-icon {
-  width: 28px;
-  height: 28px;
+.console-dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  color: white;
 }
-.console-icon.agent { background: var(--gold-olive); }
-.console-icon.spirit { background: var(--gold-primary); }
+.console-dot.spirit { background: var(--brand-golden); }
+.console-dot.agent  { background: var(--brand-green); }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 22px;
   cursor: pointer;
-  color: var(--charcoal-light);
+  font-size: 18px;
+  color: var(--brand-navy-muted);
   line-height: 1;
+  padding: 4px;
 }
+.close-btn:hover { color: var(--brand-navy); }
 
-.messages {
+.console-body {
   flex: 1;
   overflow-y: auto;
-  padding: var(--sp-sm) var(--sp-md);
+  padding: var(--sp-md) var(--sp-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
 }
 
-.msg {
-  margin-bottom: var(--sp-sm);
+.console-empty {
+  color: var(--brand-navy-muted);
+  font-style: italic;
+  font-size: 13px;
+  text-align: center;
+  margin-top: var(--sp-xl);
 }
 
+.msg { display: flex; flex-direction: column; gap: 2px; }
 .msg-role {
-  font-size: 10px;
+  font-family: var(--font-display);
+  font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--charcoal-light);
+  letter-spacing: 1px;
+  color: var(--brand-navy-muted);
 }
-.msg.user .msg-role { color: var(--gold-olive); }
-.msg.assistant .msg-role { color: var(--gold-dark); }
-
+.msg.user .msg-role { color: var(--brand-golden); }
 .msg-text {
   font-size: 13px;
-  line-height: 1.5;
-  color: var(--charcoal);
-  margin-top: 2px;
-  white-space: pre-wrap;
-  word-break: break-word;
+  line-height: 1.55;
+  color: var(--brand-navy);
 }
 
-.thinking {
-  color: var(--charcoal-light);
-  font-style: italic;
-  animation: warning-pulse 1.5s ease-in-out infinite;
-}
-
-.input-row {
+.console-input {
   display: flex;
-  gap: var(--sp-xs);
-  padding: var(--sp-sm) var(--sp-md);
+  gap: var(--sp-sm);
+  padding: var(--sp-md) var(--sp-lg);
   border-top: 1px solid var(--gold-border);
   flex-shrink: 0;
 }
 
-.chat-input {
+.input-field {
   flex: 1;
   border: 1px solid var(--gold-border);
   border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.6);
   padding: 8px 12px;
   font-size: 13px;
   font-family: var(--font-base);
-  background: white;
+  color: var(--brand-navy);
   outline: none;
-  transition: border-color 0.2s;
 }
-.chat-input:focus {
-  border-color: var(--gold-primary);
-}
+.input-field:focus { border-color: var(--brand-golden); }
 
 .send-btn {
-  background: var(--gold-primary);
   border: none;
+  background: var(--brand-golden);
+  color: white;
   border-radius: var(--radius-md);
-  padding: 8px 14px;
-  font-size: 16px;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
   cursor: pointer;
-  color: var(--charcoal);
-  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
-.send-btn:hover:not(:disabled) {
-  background: var(--gold-secondary);
-}
-.send-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
+.send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.send-btn:not(:disabled):hover { background: var(--brand-golden-mid); }
+
+.slide-right-enter-active { animation: slide-in-right 0.25s ease; }
+.slide-right-leave-active { animation: slide-in-right 0.2s ease reverse; }
 </style>

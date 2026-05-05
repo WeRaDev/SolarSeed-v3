@@ -337,6 +337,12 @@ When the agent fails or asks repeated questions:
 - Always check what's running on the host before proposing changes.
 - The deployed compose file is root-owned -- plan file edits accordingly.
 - Spirit is observation-only. Never give Spirit write access to Docker, filesystem, or external APIs.
+- **Mandatory TRL4 building-app network parity rule**: every building app must follow the Poly-Robot security/networking model.
+  - Bind service ports to loopback only (`127.0.0.1:<host_port>:<container_port>`), never `0.0.0.0`, unless explicitly approved as an infrastructure exception.
+  - Access from cityview must go through managed operator-gateway SSH forwards and `/api/v1/access/proxy/<forward_name>` paths, not direct host exposure.
+  - Cityview building links must be connection-gated (`requires_connection=true`) so apps are unavailable when managed forwards are down.
+  - Service health checks for operator UX must use forwarded localhost endpoints, matching the Poly-Robot pattern.
+  - Secrets/tokens required by forwarded apps must be injected server-side (gateway/proxy), never exposed in frontend code.
 
 ## 13) Lessons learned
 

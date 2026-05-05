@@ -6,7 +6,7 @@ The project is designed around a practical operating model:
 - **OpenFang** runs agent personas (observer/orchestrator/reflector + domain agents)
 - **Prometheus + Alertmanager + exporters** provide telemetry and health visibility
 - **Rundeck + PostgreSQL + Redis + Gitea** provide execution, state, event bus, and sovereign source control
-- **cityview** provides a Vue-based gamified observer/mainframe UI
+- **CityView** is now an external project repository for the gamified observer/mainframe UI (`wera-global/CityView`)
 
 ## Current architecture (repository runtime)
 Primary compose stack is defined in `compose/docker-compose.yml`.
@@ -34,7 +34,7 @@ External integration:
 - `prometheus/` — scrape configuration and rule files
 - `alertmanager/` — alert routing config
 - `rundeck/` — Rundeck configuration
-- `cityview/` — Vue 3 + Pinia + Vite UI
+- CityView UI is maintained in the separate `ProductionBase/CityView` repository
 - `ops/` — operator config and runbook (`CONFIG.md`, `RUNBOOK.md`) plus host Gitea deployment artifacts in `ops/gitea/`
 - `docs/research/` — architecture and research reports
 - `docs/reference/` — reference PDFs
@@ -44,7 +44,6 @@ External integration:
 ## Prerequisites
 - Docker Engine + Docker Compose v2
 - Git
-- For `cityview` development: Node.js 18+ and npm
 - For direct Spirit development: Python 3.12+
 
 ## Quick start (local compose stack)
@@ -89,46 +88,9 @@ External integration:
    curl -s http://localhost:9090/-/healthy
    ```
 
-## cityview UI (local development)
-`cityview` proxies API calls to Spirit/OpenFang/Prometheus via Vite.
-
-```bash
-cd cityview
-npm install
-CITY_HOST=<target-host-or-ip> npm run dev
-```
-
-Default dev server:
-- `http://localhost:5173`
-
-## cityview UI (local Docker runtime)
-`cityview` can now run as a dedicated Docker service in `compose/docker-compose.yml`.
-
-Start UI only (assumes backend endpoints are reachable from configured host values):
-```bash
-docker compose -f compose/docker-compose.yml up -d --no-deps cityview
-```
-
-Start UI with core backend services:
-```bash
-docker compose -f compose/docker-compose.yml up -d postgres prometheus spirit openfang cityview
-```
-
-Runtime host controls:
-- `CITYVIEW_CITY_HOST` controls `CITY_HOST` used by Vite proxy targets.
-- `POLY_ROBOT_HOST` controls the Poly-Robot proxy target (`:8765`).
-- If unset, both default to `host.docker.internal` in the dockerized UI service.
-
-## Reconciliation plan (Docker-based)
-The current reconciliation baseline keeps Poly-Robot and Odoo additions while stabilizing runtime through Dockerized `cityview`.
-
-1. Standardize local UI startup through Compose (`cityview` service) instead of ad-hoc host Node runs.
-2. Keep Poly-Robot integration enabled in `cityview` (`golden-mine`, `/poly-robot` proxy, health polling) and validate it via host-configurable envs.
-3. Preserve `odoo-app/` as an intentional local addition; decide separately whether it should be tracked in this repository or ignored.
-4. Use two operational modes:
-   - UI-only: `up -d --no-deps cityview`
-   - Full local stack: `up -d postgres prometheus spirit openfang cityview`
-5. Gate future behavior changes behind explicit env flags, while keeping the Docker runtime path stable.
+## CityView extraction
+CityView has been extracted from this repository and is now maintained in `ProductionBase/CityView` (`wera-global/CityView` on Gitea).
+For UI development/runtime, use the CityView repository and its `compose/docker-compose.yml`.
 
 ## Spirit API surface
 Main endpoints exposed by `spirit/src/spirit.py`:
