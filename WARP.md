@@ -362,3 +362,9 @@ When the agent fails or asks repeated questions:
 13. **Optimal LLM config for 8GB class**: `--ctx-size 32768 --cache-type-k q8_0 --cache-type-v q8_0 --flash-attn --mlock --no-mmap --threads 4`. Total RAM ~3.3 GB. Zero quality loss within 128K native training window. See "Optimal llama.cpp Context Window Configuration" research report.
 14. **Cityview is the mainframe interface**: All agent approvals flow through cityview Approval Quests. Future: multi-level approval system (Admin > internal agents > external agents > guests). Auto-approvals as mandates with time/quantity regulation via forkbomb.solutions.
 15. **Customs building (DIDroom/Authentik)**: Identity management across all machines and containers. Replaces per-service user registration. See "Nextcloud AIO + OpenFang + DIDroom/Authentik IAM" implementation guide.
+
+## DevOps Architect baseline (Archon-SE Enhanced)
+- This repository adopts the enhanced DevOps Architect profile defined in `AGENTS.md`.
+- Prioritize smallest viable changes, explicit verification, and rollback notes for infra-impacting updates.
+- Gate irreversible operations (data drops, force-push, destructive infra actions, production deploys) behind explicit user confirmation.
+- Prefer evidence-backed diagnostics over assumptions; include observable success/failure checks for each non-trivial change.
