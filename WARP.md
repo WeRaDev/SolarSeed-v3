@@ -1,4 +1,5 @@
 # WARP.md -- City of Light TRL4 (Lab Deployment)
+Repository scope notice (post-reorganization): this repository is now product/TRL machine operations focused. Framework runtime implementation moved to `CityLight`; global/public UX moved to `SolarState`.
 
 Purpose: Operational guide for Warp Agent Mode to develop, deploy, and operate the City of Light on the TRL4 lab machine (wera-ss-pt-sn-1). This file bridges the deployed v3.1 reality with the v5 architectural specification.
 
