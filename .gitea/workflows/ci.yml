@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          github-server-url: http://host.docker.internal:3000
       - name: Validate baseline files
         run: |
           test -f README.md

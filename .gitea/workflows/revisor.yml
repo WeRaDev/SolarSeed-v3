@@ -15,7 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          github-server-url: http://127.0.0.1:3000
+          github-server-url: http://host.docker.internal:3000
 
       - name: Baseline documentation check
         id: baseline
@@ -54,13 +54,13 @@ jobs:
         if: always()
         env:
           WERA_GITEA_TOKEN: ${{ secrets.WERA_GITEA_TOKEN }}
-          GITEA_URL: http://127.0.0.1:3000
+          GITEA_URL: http://host.docker.internal:3000
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.number }}
           BASELINE_RESULT: ${{ steps.baseline.outcome }}
           COMPILE_RESULT: ${{ steps.compile.outcome }}
           DOCKER_RESULT: ${{ steps.docker.outcome }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_URL: http://host.docker.internal:3000/${{ github.repository }}/actions/runs/${{ github.run_id }}
           REVISOR_PREFIX: /tmp/revisor_${{ github.run_id }}
         run: |
           python3 - <<'PY'
