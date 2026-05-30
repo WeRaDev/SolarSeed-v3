@@ -100,6 +100,28 @@ curl -s -X POST http://localhost:4200/api/agents \
   - Spirit endpoint: `http://spirit:9105`
   - Rundeck endpoint: `http://rundeck:4440`
 
+## Odoo stack on TRL4 (restore profile)
+- Host workspace:
+  - `~/odoo-app`
+- Bring stack up:
+  - `docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env config --quiet`
+  - `docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env up -d`
+- Restore `wera.dump.zip`:
+  - `rm -rf /tmp/wera-odoo-restore && mkdir -p /tmp/wera-odoo-restore`
+  - `unzip -o ~/odoo-app/wera.dump.zip -d /tmp/wera-odoo-restore`
+  - `cat /tmp/wera-odoo-restore/dump.sql | docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env exec -T odoo-db psql -U odoo -d wera`
+  - `docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env exec -T odoo sh -lc 'mkdir -p /var/lib/odoo/filestore/wera'`
+  - `docker cp /tmp/wera-odoo-restore/filestore/. solarseed-odoo:/var/lib/odoo/filestore/wera/`
+  - `docker exec -u 0 solarseed-odoo chown -R odoo:odoo /var/lib/odoo/filestore/wera`
+- Validate:
+  - `docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env ps`
+  - `curl -I http://127.0.0.1:8069/web/login?db=wera`
+  - `docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env logs --tail=120 odoo`
+- Tailnet exposure (TRL4 host only):
+  - `sudo tailscale set --operator=wera` (one-time optional)
+  - `sudo tailscale serve --bg 8069`
+  - `tailscale serve status`
+
 ## TRL4 lab machine review checklist
 - Target host profile:
   - Host: `wera-ss-pt-sn-1` (`100.82.194.96`)

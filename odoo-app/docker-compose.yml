@@ -1,19 +1,19 @@
 services:
   odoo-db:
-    image: postgres:${POSTGRES_VERSION:-15}
+    image: ${ODOO_DB_IMAGE:-pgvector/pgvector:pg16}
     container_name: solarseed-odoo-db
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      POSTGRES_DB: ${ODOO_DB_NAME:-postgres}
+      POSTGRES_DB: ${ODOO_DB_NAME:-wera}
       POSTGRES_USER: ${ODOO_DB_USER:-odoo}
       POSTGRES_PASSWORD: ${ODOO_DB_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - odoo_db_data:/var/lib/postgresql/data/pgdata
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${ODOO_DB_USER:-odoo} -d ${ODOO_DB_NAME:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${ODOO_DB_USER:-odoo} -d ${ODOO_DB_NAME:-wera}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -21,7 +21,7 @@ services:
       - odoo_net
 
   odoo:
-    image: odoo:${ODOO_VERSION:-18.0}
+    image: odoo:${ODOO_VERSION:-19.0}
     container_name: solarseed-odoo
     restart: unless-stopped
     depends_on:
@@ -35,11 +35,11 @@ services:
       USER: ${ODOO_DB_USER:-odoo}
       PASSWORD: ${ODOO_DB_PASSWORD}
     command:
-      - "--db-filter=${ODOO_DB_FILTER:-^odoo_lab$}"
+      - "--db-filter=${ODOO_DB_FILTER:-^wera$}"
       - "--without-demo=${ODOO_WITHOUT_DEMO:-False}"
     ports:
-      - "${ODOO_HTTP_PORT:-8069}:8069"
-      - "${ODOO_LONGPOLL_PORT:-8072}:8072"
+      - "${ODOO_BIND_HOST:-127.0.0.1}:${ODOO_HTTP_PORT:-8069}:8069"
+      - "${ODOO_BIND_HOST:-127.0.0.1}:${ODOO_LONGPOLL_PORT:-8072}:8072"
     volumes:
       - odoo_web_data:/var/lib/odoo
       - ./addons:/mnt/extra-addons
