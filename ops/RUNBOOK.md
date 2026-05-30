@@ -121,6 +121,15 @@ curl -s -X POST http://localhost:4200/api/agents \
   - `sudo tailscale set --operator=wera` (one-time optional)
   - `sudo tailscale serve --bg 8069`
   - `tailscale serve status`
+  - Current expected output:
+    - `https://wera-ss-pt-sn-1.tailfb390c.ts.net (tailnet only)`
+    - `|-- / proxy http://127.0.0.1:8069`
+  - Validate from operator workstation:
+    - `curl -I 'https://wera-ss-pt-sn-1.tailfb390c.ts.net/web/login?db=wera'`
+  - Disable exposure:
+    - `tailscale serve --https=443 off`
+  - Re-enable exposure:
+    - `sudo tailscale serve --bg 8069`
 
 ## TRL4 lab machine review checklist
 - Target host profile:
