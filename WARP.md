@@ -1,9 +1,9 @@
-# WARP.md -- City of Light TRL4 (Lab Deployment)
+# WARP.md -- City of Light TRL Operations (TRL4 Lab + TRL5 Field)
 Repository scope notice (post-reorganization): this repository is now product/TRL machine operations focused. Framework runtime implementation moved to `CityLight`; global/public UX moved to `SolarState`.
 
-Purpose: Operational guide for Warp Agent Mode to develop, deploy, and operate the City of Light on the TRL4 lab machine (wera-ss-pt-sn-1). This file bridges the deployed v3.1 reality with the v5 architectural specification.
+Purpose: Operational guide for Warp Agent Mode to develop, deploy, and operate the City of Light on TRL machines. It covers TRL4 lab operations (`wera-ss-pt-sn-1`) and TRL5 field branch operations (`wera-ss-pt-tv-1`), bridging the deployed v3.1 reality with the v5 architectural specification.
 
-Stage: **TRL4** -- Lab validation with unlimited energy. After TRL4 success, repeat in field with limited solar power (TRL5+).
+Stage: **TRL4 + TRL5** -- TRL4 lab validation remains the baseline; TRL5 field machine operations are active on branch `trl5`.
 
 ---
 
@@ -31,9 +31,12 @@ The City of Light is a sovereign living host for natural and artificial agents, 
 
 The Kabbalistic Tree of Life is Spirit's **internal cognitive language** -- not the service topology. Agents and operators interact with the Seven Pillars.
 
-## 2) TRL4 lab machine (wera-ss-pt-sn-1)
+## 2) Machine profiles (TRL4 + TRL5)
 
-Reference: ops/CONFIG.md for live values. Key facts for agent context:
+Reference: `ops/CONFIG.md` for current branch-specific live values.
+
+### 2.1 TRL4 lab machine (wera-ss-pt-sn-1)
+Key facts for agent context:
 
 - **Hardware**: Intel i5-4430 (4 cores), 8 GB RAM class, 1TB HDD; Intel iGPU (i915) + NVIDIA GTX 750 (nouveau)
 - **OS**: Debian 13 (Trixie)
@@ -42,6 +45,14 @@ Reference: ops/CONFIG.md for live values. Key facts for agent context:
   - Root FS: ext4 on `/dev/sda7` (must be mounted `rw`)
   - Separate LUKS volume may exist (e.g. `/dev/sda9`, TYPE=crypto_LUKS) and can be used for `/data` once `crypttab`/`fstab` are correct
 - **Power**: Unlimited (grid) at TRL4. Solar constraints apply at TRL5+.
+
+### 2.2 TRL5 field machine (wera-ss-pt-tv-1) -- verified snapshot 2026-05-30
+- **Access**: Tailscale host `wera-ss-pt-tv-1.tailfb390c.ts.net` (`100.82.252.18`), operator user `wera-admin` (in `docker` group)
+- **Hardware**: AMD Ryzen 7 6800H (16 vCPU), ~27 GiB RAM class, NVMe root storage
+- **OS**: Debian GNU/Linux 13 (trixie), kernel `6.12.57+deb13-amd64`
+- **Storage**: root on `/dev/nvme0n1p2` ext4 (~910G total, ~15-17% used at review); `/data` mountpoint not present
+- **Runtime profile**: 18 Docker containers running, 16 healthy, 2 without healthcheck (`nextcloud-aio-nextcloud-exporter`, `nextcloud-aio-fail2ban`)
+- **Published ports observed**: public `80`, `8080`, `8443`, `3478/tcp+udp`; loopback `11000`, `9205`
 
 ### Currently deployed and healthy (as of 2026-03-26)
 
@@ -288,7 +299,7 @@ When sudo is needed, use: `scp` file to `/tmp/`, then `ssh -t wera@192.168.1.71 
 | File | Purpose |
 |------|---------|
 | `WIZARD_V5.md` | V5 architectural specification (target state) |
-| `WARP.md` | This file -- TRL4 operational guide (current state) |
+| `WARP.md` | This file -- TRL4/TRL5 operational guide (current state) |
 | `christ-soul.md` | Soul blueprint -- 12 operational principles |
 | `ops/CONFIG.md` | Host configuration values |
 | `ops/RUNBOOK.md` | Day-2 operational procedures |

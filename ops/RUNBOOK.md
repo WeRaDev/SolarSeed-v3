@@ -103,13 +103,14 @@ curl -s -X POST http://localhost:4200/api/agents \
 ## TRL5 field machine review checklist
 - Target host profile:
   - Host: `wera-ss-pt-tv-1.tailfb390c.ts.net`
-  - User: `wera`
+  - User: `wera-admin`
 - Non-destructive baseline review commands:
-  - `ssh wera@wera-ss-pt-tv-1.tailfb390c.ts.net "hostname; tailscale ip -4; uptime"`
-  - `ssh wera@wera-ss-pt-tv-1.tailfb390c.ts.net "docker ps --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}'"`
-  - `ssh wera@wera-ss-pt-tv-1.tailfb390c.ts.net "sudo docker compose -f /data/city-of-light/docker-compose.yml config --quiet"`
-  - `ssh wera@wera-ss-pt-tv-1.tailfb390c.ts.net "curl -fsS http://127.0.0.1:9090/-/healthy && curl -fsS http://127.0.0.1:9105/health && curl -fsS http://127.0.0.1:4200/api/health"`
+  - `ssh wera-admin@wera-ss-pt-tv-1.tailfb390c.ts.net "hostname; tailscale ip -4; uname -a; uptime"`
+  - `ssh wera-admin@wera-ss-pt-tv-1.tailfb390c.ts.net "id; getent group docker; ls -l /var/run/docker.sock"`
+  - `ssh wera-admin@wera-ss-pt-tv-1.tailfb390c.ts.net "docker ps --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Ports}}'"`
+  - `ssh wera-admin@wera-ss-pt-tv-1.tailfb390c.ts.net "docker inspect --format '{{.Name}} {{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' \$(docker ps -q)"`
+  - `ssh wera-admin@wera-ss-pt-tv-1.tailfb390c.ts.net "if [ -d /data ]; then df -h / /data; else df -h /; fi"`
 - If SSH authentication fails:
-  - verify the operator key installed on TRL5 host for user `wera`
+  - verify the operator key installed on TRL5 host for user `wera-admin`
   - verify Tailscale ACL allows source machine access to the TRL5 node
-  - retry with explicit key: `ssh -i ~/.ssh/id_ed25519 wera@wera-ss-pt-tv-1.tailfb390c.ts.net`
+  - retry with explicit key: `ssh -i ~/.ssh/id_ed25519 wera-admin@wera-ss-pt-tv-1.tailfb390c.ts.net`
