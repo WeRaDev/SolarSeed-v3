@@ -99,3 +99,18 @@ curl -s -X POST http://localhost:4200/api/agents \
   - Prometheus endpoint: `http://prometheus:9090`
   - Spirit endpoint: `http://spirit:9105`
   - Rundeck endpoint: `http://rundeck:4440`
+
+## TRL4 lab machine review checklist
+- Target host profile:
+  - Host: `wera-ss-pt-sn-1` (`100.82.194.96`)
+  - User: `wera`
+- Non-destructive baseline review commands:
+  - `ssh wera@100.82.194.96 "hostname; tailscale ip -4; uname -a; uptime"`
+  - `ssh wera@100.82.194.96 "if [ -d /data ]; then df -h / /data; else df -h /; fi; grep -E 'MemTotal|MemAvailable|SwapTotal|SwapFree' /proc/meminfo"`
+  - `ssh wera@100.82.194.96 "docker ps --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Ports}}'"`
+  - `ssh wera@100.82.194.96 "docker inspect --format '{{.Name}} {{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' \$(docker ps -q)"`
+  - `ssh wera@100.82.194.96 "sudo docker compose -f /data/city-of-light/docker-compose.yml config --quiet"`
+- If SSH authentication fails:
+  - verify the operator key installed on TRL4 host for user `wera`
+  - verify Tailscale ACL allows source machine access to the TRL4 node
+  - retry with explicit key: `ssh -i ~/.ssh/id_ed25519 wera@100.82.194.96`

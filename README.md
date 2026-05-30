@@ -121,6 +121,7 @@ OpenFang base config is in `openfang/config.toml`.
 Primary day-2 commands and procedures are documented in:
 - `ops/RUNBOOK.md`
 - `ops/CONFIG.md`
+- `ops/TRL4_REVIEW_2026-05-30.md` (latest live TRL4 machine snapshot)
 
 These include:
 - routine health checks

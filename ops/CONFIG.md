@@ -1,59 +1,55 @@
-# SolarSeed v3.1 — CONFIG (fill once)
-
+# SolarSeed v3.1 — TRL4 CONFIG Snapshot (2026-05-30)
 IMPORTANT:
 - Do not put secrets in Git.
-- If you need to store secrets, put them in `compose/.env` (gitignored) and/or a password manager.
+- Keep credentials only in `.secrets/` on host and/or password manager.
 
-## 1) Host identity
-- Hostname: wera-ss-pt-sn-1
-- LAN IP (static or DHCP reservation): DHCP reservation → 192.168.1.71
-- Preferred NIC: Wi‑Fi (Windows MAC: C0-4A-00-28-B3-FB)
+## 1) Host identity (TRL4 lab machine)
+- Hostname: `wera-ss-pt-sn-1`
+- LAN IP (DHCP reservation): `192.168.1.71`
+- Tailscale IPv4: `100.82.194.96`
+- Primary operator account: `wera`
 
-## 2) Domain / TLS mode
-Choose one:
-- [x] (A) LAN-only (no public DNS)
-- [ ] (B) Public domain + Let’s Encrypt
+## 2) OS and hardware profile
+- OS: Debian GNU/Linux 13 (trixie), `DEBIAN_VERSION_FULL=13.4`
+- Kernel: `6.12.85+deb13-amd64`
+- CPU: Intel(R) Core(TM) i5-4430 @ 3.00GHz
+  - 4 vCPU (`Thread(s) per core: 1`, `Core(s) per socket: 4`, `Socket(s): 1`)
+- Memory:
+  - MemTotal: `8004552 kB` (~8.0 GB)
+  - MemAvailable at review: `2971392 kB` (~2.97 GB)
+  - SwapTotal: `5330940 kB` (~5.3 GB)
+  - SwapFree at review: `4343080 kB` (~4.34 GB)
 
-If (B):
-- Domain name:
-- Public DNS provider (optional):
+## 3) Storage layout (observed)
+- Root filesystem: `/dev/sda7` (ext4)
+  - Size: 93G
+  - Used at review: 29%
+- Data filesystem: `/dev/mapper/data_crypt`
+  - Mountpoint: `/data`
+  - Size: 96G
+  - Used at review: 3%
 
-## 3) Admin accounts (no passwords here)
-- Nextcloud admin username: admin
-- Nextcloud admin email: cloud@wera.global
-- Rundeck admin username: admin
-- Rundeck admin email: cloud@wera.global
+## 4) Runtime/software stack baseline
+- Docker Engine: active
+- Running containers: 23
+  - Healthy: 18
+  - Running without Docker healthcheck: 5 (`poly-robot-runtime-supervisor-1`, `poly-robot-runtime-gui`, `col-spirit`, `col-alertmanager`, `col-node-exporter`)
+- Key City services currently healthy: `col-openfang`, `col-prometheus`, `col-llama-cpp`, `col-gitea`, `nextcloud-aio-mastercontainer`
 
-## 4) Storage plan
-- Data disk / device (e.g. /dev/sdb1): single physical disk (likely /dev/sda on Debian); dedicated /data partition TBD
-- Data mountpoint (e.g. /data): /data
-- Docker volumes strategy:
-  - [ ] Docker managed volumes under /var/lib/docker
-  - [ ] Bind mounts rooted at <mountpoint>/docker/
-- Data partition encrypted?
-  - [x] yes
-  - [ ] no
+## 5) Network and exposed service ports (observed)
+- Public binds include:
+  - `0.0.0.0:11000->11000/tcp` (nextcloud-aio-apache)
+  - `0.0.0.0:3478->3478/tcp+udp` (nextcloud-aio-talk)
+  - `0.0.0.0:8765->8765/tcp` (poly-robot-runtime-gui)
+- Loopback-only binds include:
+  - `127.0.0.1:8080->8080/tcp` (nextcloud-aio-mastercontainer)
+  - `127.0.0.1:4200->4200/tcp` (col-openfang)
+  - `127.0.0.1:9105->9105/tcp` (col-spirit)
+  - `127.0.0.1:9090->9090/tcp` (col-prometheus)
+  - `127.0.0.1:9093->9093/tcp` (col-alertmanager)
+  - `127.0.0.1:3000->3000/tcp` and `127.0.0.1:2222->2222/tcp` (col-gitea)
+  - `127.0.0.1:8081->8081/tcp` (col-llama-cpp)
 
-## 5) Alert notification channel
-Choose one (or more):
-- [ ] Signal
-- [x] Telegram
-- [ ] Email (SMTP)
-- [ ] Webhook
-
-Details (IDs/addresses/endpoints; no API tokens here):
-- Telegram: https://t.me/c/2208627521/4
-
-## 6) Service ports (City of Light v3.1 baseline)
-- Fortress (Nextcloud): 8080
-- Nextcloud AIO admin: 8443
-- Library (Prometheus): 9090
-- Library (Alertmanager): 9093
-- Factory (Rundeck): 4440
-- Spirit: 9105
-- OpenFang API/WebChat: 4200
-- Forge (Gitea HTTP): 3000
-- Forge (Gitea SSH): 2222
-- University (llama.cpp, optional): 8081
-- House (PostgreSQL): 5432
+## 6) Validation timestamp
+- Last verified from operator workstation over Tailscale SSH: `2026-05-30`
 

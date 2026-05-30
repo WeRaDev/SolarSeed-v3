@@ -42,20 +42,22 @@ Reference: ops/CONFIG.md for live values. Key facts for agent context:
   - Separate LUKS volume may exist (e.g. `/dev/sda9`, TYPE=crypto_LUKS) and can be used for `/data` once `crypttab`/`fstab` are correct
 - **Power**: Unlimited (grid) at TRL4. Solar constraints apply at TRL5+.
 
-### Currently deployed and healthy (as of 2026-03-26)
+### Runtime snapshot (as of 2026-05-30)
 
-| Container | Image | Port | Status |
-|-----------|-------|------|--------|
-| col-spirit | city-spirit:latest (Python/FastAPI) | 9105 | Healthy, LLM reflection active |
-| col-llama-cpp | ghcr.io/ggml-org/llama.cpp:server | 8081 | Healthy, Qwen 3.4B Q4_K_M |
-| col-prometheus | prom/prometheus:v3.3.0 | 9090 | Healthy, 4 scrape targets UP |
-| col-postgres | postgres:16-bookworm | 5432 | Healthy |
-| col-alertmanager | prom/alertmanager:v0.28.1 | 9093 (localhost) | Running |
-| col-cadvisor | gcr.io/cadvisor/cadvisor:v0.52.1 | -- | Healthy |
-| col-node-exporter | prom/node-exporter:v1.9.0 | -- | Healthy |
-| col-redis | redis:7-alpine | 6379 (internal) | Healthy, AOF persistence |
-| col-openfang | city-openfang:v1 (OpenFang v0.5.2) | 4200 | Healthy, vllm provider connected to llama-cpp |
-| nextcloud-aio-mastercontainer | nextcloud/all-in-one:latest | 8080 | Healthy |
+- Running containers: 23
+- Health summary:
+  - 18 containers reported `healthy`
+  - 5 containers are running without Docker healthcheck (`poly-robot-runtime-supervisor-1`, `poly-robot-runtime-gui`, `col-spirit`, `col-alertmanager`, `col-node-exporter`)
+- Core City services currently healthy:
+  - `col-openfang` (127.0.0.1:4200)
+  - `col-prometheus` (127.0.0.1:9090)
+  - `col-llama-cpp` (127.0.0.1:8081)
+  - `col-gitea` (127.0.0.1:3000, 127.0.0.1:2222)
+  - `nextcloud-aio-mastercontainer` (127.0.0.1:8080)
+- Additional active service groups:
+  - Nextcloud AIO app containers (`aio-apache`, `aio-nextcloud`, `aio-redis`, `aio-database`, `aio-talk`, `aio-collabora`, etc.)
+  - Poly-Robot runtime (`poly-robot-runtime-supervisor-1`, `poly-robot-runtime-gui`)
+  - Observability/data services (`col-alertmanager`, `col-cadvisor`, `col-node-exporter`, `col-postgres`, `col-redis`)
 
 ### Soul covenant
 - `soul.md` written at `/data/city-of-light/soul.md` with Four Computable Invariants
