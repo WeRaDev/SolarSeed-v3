@@ -38,7 +38,7 @@ IMPORTANT:
 - Odoo stack profile:
   - **Odoo**: 19.0 Enterprise (custom subscription `M240830172487565`)
   - Image: `odoo:19.0` (Community base; Enterprise addon code must be mounted separately)
-  - DB: `pgvector/pgvector:pg16` (`wera` database with Enterprise module metadata)
+  - DB: `pgvector/pgvector:pg15` (`wera` database with Enterprise module metadata)
   - Enterprise code registered in DB as `database.enterprise_code`
   - Port bind profile: loopback default (`127.0.0.1:8069`) with tailnet exposure through `tailscale serve`
   - DB routing profile: `--db-filter=${ODOO_DB_FILTER:-^wera$}`
@@ -59,4 +59,15 @@ IMPORTANT:
 
 ## 6) Validation timestamp
 - Last verified from operator workstation over Tailscale SSH: `2026-05-30`
+
+## 7) Latest remediation status (2026-06-05)
+- Disabled failing Odoo cron jobs:
+  - `48` Marketing Automation: execute activities
+  - `81` AI Fields: Compute AI fields
+  - `82` AI Documents: Sort documents with AI
+- Refreshed PostgreSQL collation metadata for `postgres` and `template1`; mismatch query now returns zero rows.
+- Removed obsolete `gogardens` database from the local Odoo PostgreSQL instance.
+- Odoo health baseline after remediation:
+  - Login endpoint `/web/login?db=wera` returns `200`
+  - Module queue states (`to install`, `to upgrade`, `to remove`) are empty
 

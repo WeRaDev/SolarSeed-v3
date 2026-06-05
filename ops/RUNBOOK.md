@@ -153,6 +153,36 @@ Use this when Settings UI fails with Owl/undefined-field errors after restore or
    - runtime detector reports `runtime_offender_views=0`
    - recent logs contain no new Settings-specific `ValidationError`/undefined-field failures
 
+## Odoo remediation log (2026-06-05)
+Resolution summary for repeated cron failures and PostgreSQL collation warnings observed on the local TRL4 Odoo profile.
+
+- Symptoms observed:
+  - Repeated cron failures for IDs `48`, `81`, `82` (`Marketing Automation`, `AI Fields`, `AI Documents`)
+  - Recurrent PostgreSQL warning: collation version mismatch for `postgres`/`template1`
+  - Repeated Odoo warning scanning obsolete DB `gogardens`
+
+- Actions applied:
+  1. Disabled failing cron jobs:
+     - `update ir_cron set active=false where id in (48,81,82);`
+  2. Refreshed collation metadata:
+     - `ALTER DATABASE postgres REFRESH COLLATION VERSION;`
+     - `ALTER DATABASE template1 REFRESH COLLATION VERSION;`
+  3. Removed obsolete database:
+     - `DROP DATABASE IF EXISTS gogardens WITH (FORCE);`
+
+- Verification checks:
+  - `select datname from pg_database where datname='gogardens';` -> no rows
+  - `select datname, datcollversion, pg_database_collation_actual_version(oid) ...` mismatch query -> no rows
+  - `select id, cron_name, active from ir_cron where id in (48,81,82);` -> all inactive
+  - `curl -I http://127.0.0.1:8069/web/login?db=wera` -> `200 OK`
+  - module queue states (`to install`, `to upgrade`, `to remove`) -> empty
+
+- Current status:
+  - Odoo service healthy (`odoo` up, `odoo-db` healthy)
+  - Cron failure loop from IDs `48/81/82` stopped
+  - PostgreSQL collation mismatch warning resolved for active DBs
+  - `gogardens` no longer exists
+
 ## TRL4 lab machine review checklist
 - Target host profile:
   - Host: `wera-ss-pt-sn-1` (`100.82.194.96`)
