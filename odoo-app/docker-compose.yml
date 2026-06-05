@@ -34,6 +34,7 @@ services:
       PORT: 5432
       USER: ${ODOO_DB_USER:-odoo}
       PASSWORD: ${ODOO_DB_PASSWORD}
+      ODOO_ENTERPRISE_CODE: ${ODOO_ENTERPRISE_CODE:-M240830172487565}
     command:
       - "--db-filter=${ODOO_DB_FILTER:-^wera$}"
       - "--without-demo=${ODOO_WITHOUT_DEMO:-False}"
@@ -43,6 +44,7 @@ services:
     volumes:
       - odoo_web_data:/var/lib/odoo
       - ./addons:/mnt/extra-addons
+      - ./enterprise:/mnt/enterprise
       - ./config/odoo.conf:/etc/odoo/odoo.conf:ro
     networks:
       - odoo_net

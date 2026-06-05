@@ -58,6 +58,7 @@ Reference: ops/CONFIG.md for live values. Key facts for agent context:
   - Nextcloud AIO app containers (`aio-apache`, `aio-nextcloud`, `aio-redis`, `aio-database`, `aio-talk`, `aio-collabora`, etc.)
   - Poly-Robot runtime (`poly-robot-runtime-supervisor-1`, `poly-robot-runtime-gui`)
   - Observability/data services (`col-alertmanager`, `col-cadvisor`, `col-node-exporter`, `col-postgres`, `col-redis`)
+  - Odoo stack (`solarseed-odoo`, `solarseed-odoo-db`): **Odoo 19.0 Enterprise** (custom subscription `M240830172487565`). Enterprise code present in DB; Enterprise addon files not yet mounted in container `addons_path`.
 
 ### Soul covenant
 - `soul.md` written at `/data/city-of-light/soul.md` with Four Computable Invariants
@@ -283,6 +284,78 @@ When sudo is needed, use: `scp` file to `/tmp/`, then `ssh -t wera@192.168.1.71 
 - Always validate compose YAML before deploying.
 - Test one service at a time. Do not `docker compose up -d` the entire stack unless all services are proven.
 - When the LLM is involved, keep prompts short (256 tokens max) -- inference takes ~17s on this CPU.
+
+### TRL execution protocol (mandatory for development/configuration tasks)
+Goal: minimize risk and SSH churn by doing preparation locally and executing remote changes in a small number of long, purposeful SSH sessions.
+
+1. **Context + scope gate (local-only)**
+- Study project context and associated files first (`WARP.md`, `ops/CONFIG.md`, `ops/RUNBOOK.md`, relevant AGENTS/skills, and task-specific source-of-truth documents).
+- Define exact scope, affected components, acceptance criteria, and rollback boundaries.
+
+2. **Plan gate (local-only, before SSH)**
+- Create a detailed ordered plan before any TRL-changing command.
+- The plan must include: preflight checks, implementation steps, validation checks, rollback steps, and destructive/high-impact checkpoints requiring explicit user confirmation.
+- Do not open SSH for execution until this plan is complete.
+
+3. **Local build/test gate (local-only, before SSH)**
+- Build scripts/configs/content locally first.
+- Run local validation (syntax/lint/unit/smoke/dry-run checks as applicable) before transfer.
+- Prepare deployable artifacts so remote work is apply-and-verify, not ad-hoc authoring.
+
+4. **Batched SSH execution gate (remote)**
+- Open SSH only when local artifacts and plan are ready.
+- Execute in one session per logical scope whenever possible (example scopes: "Odoo partner pages", "compose service update", "monitoring config").
+- Run commands in ordered batches inside the same session: preflight -> apply -> restart/reload -> post-check.
+- Avoid one-command-per-connection loops. Reconnect only when switching major scope, waiting on approval, or after disruptive network/reboot events.
+
+5. **In-session verification + evidence gate (remote)**
+- Run all planned remote tests before leaving the session (HTTP probes, service health, module state, DB checks, etc.).
+- Collect concrete evidence for reporting (status codes, command outputs, key record IDs/paths).
+- If verification fails, fix or rollback in the same session when safe.
+
+6. **Report + clean exit gate**
+- Provide a concise completion report: what changed, what was verified, what remains, and any risks.
+- Explicitly exit SSH after the batch is complete.
+
+### SSH batching policy (anti-patterns to avoid)
+- Do not start remote execution before plan completion.
+- Do not use many short SSH sessions for closely related steps that can be safely grouped.
+- Do not mark tasks complete without remote validation evidence.
+- Do not perform destructive/high-impact actions without explicit confirmation at the planned checkpoint.
+
+### Odoo automation loop (mandatory for install/restore/configuration work)
+Goal: maximize automation and UX confidence while minimizing manual steps and rework.
+
+1. **Synchronize Gitea repositories (local-only, before execution)**
+- Clone or sync the target app repository and its documentation repository.
+- Create/refresh a working branch and record the exact commit hash that will be replayed on TRL.
+
+2. **Skill cross-validation gate (local-only)**
+- Cross-check active skills against project docs (`odoo-app/README.md`, `odoo-app/ODOO.AGENT.md`, `ops/RUNBOOK.md`, `WARP.md`).
+- Upgrade the skill set before runtime mutation: create missing skills and modify outdated skills.
+
+3. **Local container setup/config gate**
+- Validate compose/env first, then start the local container stack.
+- Install/configure app requirements in local container and enable monitoring hooks (logs, route probes, module-state checks).
+
+4. **Restore + test gate (local)**
+- Restore database and filestore from backup.
+- Run functional verification suite (auth, module states, queue states, key routes, website assets, CTA flow).
+- For Odoo shell writes that must persist, always execute `env.cr.commit()` before post-checks.
+
+5. **Learn + document + publish gate**
+- Analyze failures and corrective actions.
+- Update app documentation and operational guidance with new lessons.
+- Commit and push the remote branch before TRL replay.
+
+6. **TRL replay gate**
+- Connect to the related TRL machine and verify its Gitea checkout is updated to the same remote branch commit.
+- Repeat local steps 3 and 4 on TRL in one batched SSH session.
+- Ensure app availability through Tailscale when in scope.
+
+7. **Manual-test handoff gate**
+- Report evidence concisely (what changed, what was verified, what remains).
+- Await manual test results; if tests fail, restart loop from step 2.
 
 ### Key project files
 

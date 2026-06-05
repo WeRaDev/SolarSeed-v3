@@ -113,6 +113,8 @@ curl -s -X POST http://localhost:4200/api/agents \
   - `docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env exec -T odoo sh -lc 'mkdir -p /var/lib/odoo/filestore/wera'`
   - `docker cp /tmp/wera-odoo-restore/filestore/. solarseed-odoo:/var/lib/odoo/filestore/wera/`
   - `docker exec -u 0 solarseed-odoo chown -R odoo:odoo /var/lib/odoo/filestore/wera`
+  - `source ~/odoo-app/.env && docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env exec -T odoo odoo shell -d ${ODOO_DB_NAME:-wera} --db_host=odoo-db -r ${ODOO_DB_USER:-odoo} -w "$ODOO_DB_PASSWORD" < ~/odoo-app/scripts/ensure_enterprise_subscription.py`
+  - `docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env exec -T odoo-db psql -U ${ODOO_DB_USER:-odoo} -d ${ODOO_DB_NAME:-wera} -c "select key, value from ir_config_parameter where key='database.enterprise_code';"`
 - Validate:
   - `docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env ps`
   - `curl -I http://127.0.0.1:8069/web/login?db=wera`
@@ -130,6 +132,26 @@ curl -s -X POST http://localhost:4200/api/agents \
     - `tailscale serve --https=443 off`
   - Re-enable exposure:
     - `sudo tailscale serve --bg 8069`
+
+## Odoo Settings registry mismatch (TRL4)
+Use this when Settings UI fails with Owl/undefined-field errors after restore or module drift.
+
+1. Detect runtime offenders (active inherited views referencing runtime-missing `res.config.settings` fields):
+   - `source ~/odoo-app/.env && docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env exec -T odoo odoo shell -d wera --db_host=odoo-db -r "${ODOO_DB_USER:-odoo}" -w "$ODOO_DB_PASSWORD"`
+   - In shell, compare active inherited view field names to `env['res.config.settings']._fields` and list offending view IDs/XMLIDs.
+2. Quarantine offending inherited views:
+   - `docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env exec -T odoo-db psql -U odoo -d wera -c "update ir_ui_view set active=false where id in (<offending_ids>);"`
+3. Restart Odoo only:
+   - `docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env restart odoo`
+4. Validate Settings endpoints (authenticated):
+   - `/web/action/load` with `res.config.settings` action ID
+   - `/web/dataset/call_kw/res.config.settings/get_view`
+   - `/web/dataset/call_kw/res.config.settings/get_views`
+5. Capture audit artifact:
+   - Save quarantined view IDs/XMLIDs/missing fields to `/home/wera/.secrets/odoo-settings-view-quarantine-<timestamp>.json`
+6. Verify clean state:
+   - runtime detector reports `runtime_offender_views=0`
+   - recent logs contain no new Settings-specific `ValidationError`/undefined-field failures
 
 ## TRL4 lab machine review checklist
 - Target host profile:

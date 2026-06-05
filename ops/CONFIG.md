@@ -35,6 +35,13 @@ IMPORTANT:
   - Healthy: 18
   - Running without Docker healthcheck: 5 (`poly-robot-runtime-supervisor-1`, `poly-robot-runtime-gui`, `col-spirit`, `col-alertmanager`, `col-node-exporter`)
 - Key City services currently healthy: `col-openfang`, `col-prometheus`, `col-llama-cpp`, `col-gitea`, `nextcloud-aio-mastercontainer`
+- Odoo stack profile:
+  - **Odoo**: 19.0 Enterprise (custom subscription `M240830172487565`)
+  - Image: `odoo:19.0` (Community base; Enterprise addon code must be mounted separately)
+  - DB: `pgvector/pgvector:pg16` (`wera` database with Enterprise module metadata)
+  - Enterprise code registered in DB as `database.enterprise_code`
+  - Port bind profile: loopback default (`127.0.0.1:8069`) with tailnet exposure through `tailscale serve`
+  - DB routing profile: `--db-filter=${ODOO_DB_FILTER:-^wera$}`
 
 ## 5) Network and exposed service ports (observed)
 - Public binds include:
