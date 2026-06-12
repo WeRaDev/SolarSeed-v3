@@ -111,3 +111,26 @@ Use this loop for every install/restore/configuration task to reduce manual erro
 
 Operational note:
 - If Odoo shell changes are used for data writes, execute `env.cr.commit()` before post-checks/evidence capture.
+## 9) Fonseca rollout handoff (Phase 8 manual callback baseline)
+- Addon delivery unit:
+  - `odoo-app/addons/wera_fonseca_site`
+  - Current module version: `19.0.1.1.0`
+- Intake + consultation flow contract:
+  - Public intake endpoint: `POST /fonseca/intake`
+  - CRM tagging: `fonseca-gardens` and `intent:<quote|consultation|remote-owner>`
+  - Consultation intent handling: manual callback scheduling from CRM (`manual-callback-queue` activity)
+  - Consultation CTA target (no self-booking dependency): `/contactus?partner=fonseca-gardens&intent=consultation`
+  - Redirect contract after submit: `/contactus?partner=fonseca-gardens&intent=<intent>&submitted=1`
+- Content production artifacts:
+  - Source of truth: `odoo-app/content/fonseca_gardens_source_of_truth.json`
+  - Visual request pack: `odoo-app/content/fonseca_gardens_visual_request_pack.json`
+- Rollout script mode contract:
+  - `odoo-app/scripts/fonseca_trl4_rollout.py` defaults to `FONSECA_APPOINTMENT_MODE=manual_callback`
+  - Unsupported appointment-family modules in queue states are normalized to `uninstalled` during rollout.
+- Phase evidence baseline:
+  - `ops/evidence/fonseca_phase5_20260607T121444Z`
+  - `ops/evidence/fonseca_phase6_r2_20260608T113906Z`
+  - `ops/evidence/fonseca_phase8_manual_callback_20260608T170919Z`
+- Current QA position before TRL replay:
+  - Automated route/CRM checks passed in R2 evidence.
+  - Manual browser gate (final callback UX/content/responsive pass) remains required after replay.

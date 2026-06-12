@@ -132,6 +132,43 @@ curl -s -X POST http://localhost:4200/api/agents \
     - `tailscale serve --https=443 off`
   - Re-enable exposure:
     - `sudo tailscale serve --bg 8069`
+## Fonseca rollout replay on TRL4 (P8 manual callback mode)
+Use this when shipping the current `wera_fonseca_site` rollout to TRL4 while appointment enterprise addons are unavailable.
+- Scope:
+  - apply addon/script delta from local validated branch state
+  - run module upgrade for `wera_fonseca_site`
+  - enforce manual consultation callback mode and normalize unsupported appointment queue states
+  - verify route + CTA + CRM lead/activity contracts without destructive DB actions
+- Batched SSH execution sequence:
+  1. Preflight and sync:
+     - `cd ~/odoo-app`
+     - `git --no-pager status --short`
+     - `git --no-pager rev-parse --abbrev-ref HEAD`
+     - `git --no-pager pull --ff-only`
+     - `docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env config --quiet`
+  2. Apply rollout:
+     - `source ~/odoo-app/.env && docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env exec -T odoo odoo -d ${ODOO_DB_NAME:-wera} --db_host=odoo-db -r ${ODOO_DB_USER:-odoo} -w "$ODOO_DB_PASSWORD" -u wera_fonseca_site --stop-after-init`
+     - `source ~/odoo-app/.env && docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env exec -T odoo odoo shell -d ${ODOO_DB_NAME:-wera} --db_host=odoo-db -r ${ODOO_DB_USER:-odoo} -w "$ODOO_DB_PASSWORD" < ~/odoo-app/scripts/fonseca_trl4_rollout.py`
+     - `docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env up -d odoo`
+  3. Post-checks:
+     - `docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env ps`
+     - `curl -s -o /dev/null -w '%{http_code}\n' 'http://127.0.0.1:8069/' -H 'Host: fonseca-gardens.wera-ss-pt-sn-1.tailfb390c.ts.net'`
+     - `curl -s -o /dev/null -w '%{http_code}\n' 'http://127.0.0.1:8069/contactus?intent=quote&partner=fonseca-gardens' -H 'Host: fonseca-gardens.wera-ss-pt-sn-1.tailfb390c.ts.net'`
+     - `curl -s -o /dev/null -w '%{http_code}\n' 'http://127.0.0.1:8069/contactus?intent=consultation&partner=fonseca-gardens' -H 'Host: fonseca-gardens.wera-ss-pt-sn-1.tailfb390c.ts.net'`
+     - `curl -s -o /dev/null -w '%{http_code}\n' 'http://127.0.0.1:8069/appointment' -H 'Host: fonseca-gardens.wera-ss-pt-sn-1.tailfb390c.ts.net'`
+     - `source ~/odoo-app/.env && docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env exec -T odoo-db psql -U ${ODOO_DB_USER:-odoo} -d ${ODOO_DB_NAME:-wera} -c "select name, latest_version, state from ir_module_module where name in ('wera_fonseca_site','website','crm','appointment','appointment_crm','appointment_hr','appointment_sms','website_appointment_crm','web_gantt','hr_gantt') order by name;"`
+     - `source ~/odoo-app/.env && docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env exec -T odoo-db psql -U ${ODOO_DB_USER:-odoo} -d ${ODOO_DB_NAME:-wera} -c "select name, state from ir_module_module where name in ('appointment','appointment_crm','appointment_hr','appointment_sms','website_appointment_crm','web_gantt','hr_gantt') and state in ('to install','to upgrade','to remove') order by name;"`
+     - `curl -s -i -X POST 'http://127.0.0.1:8069/fonseca/intake' -H 'Host: fonseca-gardens.wera-ss-pt-sn-1.tailfb390c.ts.net' -H 'Content-Type: application/x-www-form-urlencoded' --data 'name=TRL4+Callback+Probe&phone=%2B351900000000&email=callback.probe%40example.com&intent=consultation&property_address=Sintra&message=Manual+callback+validation'`
+     - `source ~/odoo-app/.env && docker compose -f ~/odoo-app/docker-compose.yml --env-file ~/odoo-app/.env exec -T odoo-db psql -U ${ODOO_DB_USER:-odoo} -d ${ODOO_DB_NAME:-wera} -c "select l.id, l.name, l.email_from, l.phone, l.create_date, a.summary, a.date_deadline from crm_lead l left join mail_activity a on a.res_model = 'crm.lead' and a.res_id = l.id where l.name ilike '%TRL4 Callback Probe%' order by l.id desc limit 3;"`
+- Non-destructive policy:
+  - do not run `down -v`, `drop database`, or restore commands in this replay path
+  - if rollback is needed, reset code to prior commit and rerun `-u wera_fonseca_site`
+- Evidence:
+  - Save replay outputs under `ops/evidence/fonseca_phase8_manual_callback_<timestamp>/`
+  - Include module state, queue-normalization query output, route codes, and CRM lead/activity verification output.
+  - Include content artifacts copied from:
+    - `odoo-app/content/fonseca_gardens_source_of_truth.json`
+    - `odoo-app/content/fonseca_gardens_visual_request_pack.json`
 
 ## Odoo Settings registry mismatch (TRL4)
 Use this when Settings UI fails with Owl/undefined-field errors after restore or module drift.

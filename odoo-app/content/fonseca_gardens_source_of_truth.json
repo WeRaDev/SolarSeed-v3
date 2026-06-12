@@ -1,0 +1,158 @@
+{
+  "source_document": {
+    "path": "/Users/mikhailananyin/Documents/WeRa Global/Customers/Fonseca Gardens/Fonseca Gardens — Business Model, Brand Playbook & Digital Infrastructure Guide (Odoo + Gitea).md",
+    "ingested_at": "2026-06-03",
+    "purpose": "Primary business and brand source for Fonseca Gardens website page creation in Odoo."
+  },
+  "critical_analysis": {
+    "high_confidence_public_claims": [
+      "Fonseca Gardens operates in the Lisbon region with Sintra as a key area.",
+      "Brand positioning is subscription-first garden maintenance with transparent communication and accountability.",
+      "Founder narrative is central to trust and differentiation and should be present on core web pages.",
+      "Primary website tone should be professional, clear, and reliable.",
+      "The first conversion objective is lead capture and CRM-managed manual consultation callback acquisition."
+    ],
+    "claims_requiring_external_revalidation_before_prominent_public_use": [
+      "Exact Portugal landscaping market size and growth numbers.",
+      "Competitive ranking claims (e.g., 'largest' operators).",
+      "Any dated macro-market projections and ad-performance benchmarks."
+    ],
+    "copy_guardrails": [
+      "Use 'Above & beyond. Every garden.' as the primary public tagline.",
+      "Keep 'Let me trim your bush.' for social campaigns only, not core website hero copy.",
+      "Avoid unverifiable superlatives; prioritize concrete service promises.",
+      "Use multilingual trust framing (EN/PT, plus sensitivity to RU-speaking clients) without overclaiming language coverage."
+    ]
+  },
+  "brand_core": {
+    "brand_name": "Fonseca Gardens",
+    "primary_tagline": "Above & beyond. Every garden.",
+    "positioning_statement": "Fonseca Gardens delivers subscription-first garden maintenance in Sintra, Cascais, and the Lisbon region with international standards, transparent proof-of-work communication, and accountable follow-through.",
+    "tone": [
+      "Professional",
+      "Confident",
+      "Practical",
+      "Trust-building"
+    ],
+    "service_area_focus": [
+      "Sintra",
+      "Cascais",
+      "Lisbon region"
+    ]
+  },
+  "customer_segments": [
+    "Expat homeowners seeking clear communication and reliability",
+    "Absentee property owners needing autonomous service and reporting",
+    "Condominium/property managers seeking recurring outdoor maintenance",
+    "Quality-first local residents"
+  ],
+  "content_optimization_targets": {
+    "hero_primary_message": "Above & beyond. Every garden.",
+    "hero_support_message": "Subscription-first maintenance with photo-backed proof-of-work and accountable communication.",
+    "consultation_flow_message": "Consultation requests are confirmed manually from CRM callback queue (target initial response in 4 business hours).",
+    "trust_block_points": [
+      "Visit confirmation before each scheduled operation",
+      "Before/after evidence after each maintenance visit",
+      "Written scope and quote before recurring service begins"
+    ],
+    "cta_labels": {
+      "quote_primary": "Request Quote",
+      "consultation_secondary": "Request Consultation Call-back"
+    }
+  },
+  "visual_content_requests": {
+    "request_background": {
+      "theme": "Premium Lisbon-region residential garden at golden hour, healthy layered greenery, clean stone paths, subtle terracotta accents, no stock-photo look.",
+      "ratio": "16:9 safe center crop with headline-safe negative space on left third.",
+      "exposition": "Convey calm professionalism, reliability, and high-maintenance standards suitable for expat homeowners.",
+      "format": "webp, 2560x1440 minimum, under 900KB final export."
+    },
+    "service_icon_maintenance": {
+      "theme": "Minimal line icon for recurring maintenance (pruning shears + leaf) in brand green on transparent background.",
+      "ratio": "1:1 square.",
+      "exposition": "Represents subscription routine care and punctual repeat visits.",
+      "format": "svg vector + png fallback 512x512."
+    },
+    "service_icon_irrigation": {
+      "theme": "Minimal line icon for irrigation checks (water droplet + sprinkler arc), consistent with maintenance icon style.",
+      "ratio": "1:1 square.",
+      "exposition": "Represents irrigation inspection and adjustment reliability.",
+      "format": "svg vector + png fallback 512x512."
+    },
+    "proof_block_before_after": {
+      "theme": "Matched-angle before/after photo pair of same garden zone with strong improvement visibility.",
+      "ratio": "4:3 each panel, consistent framing between before and after.",
+      "exposition": "Demonstrate proof-of-work reporting standard and measurable upkeep quality.",
+      "format": "jpg, two files each 1600x1200 minimum, high quality with mild compression."
+    },
+    "team_action_photo": {
+      "theme": "Founder/crew actively working in real garden environment, natural light, branded workwear optional but clean.",
+      "ratio": "3:2 landscape.",
+      "exposition": "Show hands-on execution, accountability, and founder-led operations.",
+      "format": "jpg, 2400x1600 minimum, color-corrected for web."
+    },
+    "cta_banner_visual": {
+      "theme": "Clean consultation callback banner visual with subtle phone/message motif integrated into garden context.",
+      "ratio": "21:9 ultra-wide strip.",
+      "exposition": "Communicate \"request callback\" action without implying self-service appointment booking.",
+      "format": "webp, 2100x900 minimum, under 600KB final export."
+    }
+  },
+  "value_proposition": [
+    "Recurring subscription maintenance tiers",
+    "Proof-of-work communication (photos/video reporting)",
+    "Single accountable point of contact",
+    "Manual consultation callback flow handled from CRM with clear response SLA",
+    "Annual contract option with discount positioning"
+  ],
+  "service_offering_for_pages": {
+    "core_services": [
+      "Garden maintenance subscriptions",
+      "Pruning and seasonal bed care",
+      "Irrigation checks and adjustments",
+      "One-time intensive garden reset"
+    ],
+    "pricing_tiers_reference": [
+      {
+        "name": "Essential",
+        "range_eur_month": "100-150"
+      },
+      {
+        "name": "Standard",
+        "range_eur_month": "150-350"
+      },
+      {
+        "name": "Premium",
+        "range_eur_month": "350-500"
+      },
+      {
+        "name": "Estate",
+        "range_eur_month": "500-950+"
+      }
+    ]
+  },
+  "page_generation_blueprint": {
+    "partners_page": {
+      "url": "/partners",
+      "goal": "Present the WeRa partner network and route users to the first partner profile.",
+      "required_sections": [
+        "Partners network mission statement",
+        "Team-style visual section",
+        "First partner callout card for Fonseca Gardens",
+        "Primary CTA to partner profile",
+        "Secondary CTA to quote/contact flow"
+      ]
+    },
+    "fonseca_partner_page": {
+      "url": "/partners/fonseca-gardens",
+      "goal": "Convert visitors into qualified leads and service consultations for Fonseca Gardens.",
+      "required_sections": [
+        "Hero with brand tagline and service area",
+        "Founder credibility summary",
+        "Service model and subscription orientation",
+        "Entry pricing architecture",
+        "Lead capture CTA (quote/contact) and consultation callback CTA"
+      ]
+    }
+  }
+}

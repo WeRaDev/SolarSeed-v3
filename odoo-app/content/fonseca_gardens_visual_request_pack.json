@@ -1,0 +1,43 @@
+{
+  "brand": "Fonseca Gardens",
+  "campaign_goal": "Drive qualified quote and consultation callback requests without self-service appointment booking dependency.",
+  "spec_version": "2026-06-08",
+  "requests": {
+    "request_background": {
+      "theme": "Premium Lisbon-region residential garden at golden hour, healthy layered greenery, clean stone paths, subtle terracotta accents, no stock-photo look.",
+      "ratio": "16:9 safe center crop with headline-safe negative space on left third.",
+      "exposition": "Convey calm professionalism, reliability, and high-maintenance standards suitable for expat homeowners.",
+      "format": "webp, 2560x1440 minimum, under 900KB final export."
+    },
+    "service_icon_maintenance": {
+      "theme": "Minimal line icon for recurring maintenance (pruning shears + leaf) in brand green on transparent background.",
+      "ratio": "1:1 square.",
+      "exposition": "Represents subscription routine care and punctual repeat visits.",
+      "format": "svg vector + png fallback 512x512."
+    },
+    "service_icon_irrigation": {
+      "theme": "Minimal line icon for irrigation checks (water droplet + sprinkler arc), consistent with maintenance icon style.",
+      "ratio": "1:1 square.",
+      "exposition": "Represents irrigation inspection and adjustment reliability.",
+      "format": "svg vector + png fallback 512x512."
+    },
+    "proof_block_before_after": {
+      "theme": "Matched-angle before/after photo pair of same garden zone with strong improvement visibility.",
+      "ratio": "4:3 each panel, consistent framing between before and after.",
+      "exposition": "Demonstrate proof-of-work reporting standard and measurable upkeep quality.",
+      "format": "jpg, two files each 1600x1200 minimum, high quality with mild compression."
+    },
+    "team_action_photo": {
+      "theme": "Founder/crew actively working in real garden environment, natural light, branded workwear optional but clean.",
+      "ratio": "3:2 landscape.",
+      "exposition": "Show hands-on execution, accountability, and founder-led operations.",
+      "format": "jpg, 2400x1600 minimum, color-corrected for web."
+    },
+    "cta_banner_visual": {
+      "theme": "Clean consultation callback banner visual with subtle phone/message motif integrated into garden context.",
+      "ratio": "21:9 ultra-wide strip.",
+      "exposition": "Communicate callback-request action without implying self-service appointment booking.",
+      "format": "webp, 2100x900 minimum, under 600KB final export."
+    }
+  }
+}

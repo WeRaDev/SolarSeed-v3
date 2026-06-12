@@ -70,4 +70,22 @@ IMPORTANT:
 - Odoo health baseline after remediation:
   - Login endpoint `/web/login?db=wera` returns `200`
   - Module queue states (`to install`, `to upgrade`, `to remove`) are empty
+## 8) Fonseca rollout readiness snapshot (2026-06-08, local pre-TRL replay)
+- Rollout addon: `wera_fonseca_site` version `19.0.1.1.0`
+- Manual callback mode baseline applied:
+  - consultation/quote forms post to `/fonseca/intake`
+  - CRM lead creation with `fonseca-gardens` + `intent:*` tags
+  - consultation intent creates CRM callback-scheduling activity (`manual-callback-queue`)
+  - stale `/appointment` CTA links removed from rendered Fonseca routes and header CTA patches
+  - rollout script defaults to `FONSECA_APPOINTMENT_MODE=manual_callback`
+  - unsupported appointment-family queue states normalized to `uninstalled`
+- Content production artifacts prepared:
+  - `odoo-app/content/fonseca_gardens_source_of_truth.json`
+  - `odoo-app/content/fonseca_gardens_visual_request_pack.json`
+- Evidence packs:
+  - `ops/evidence/fonseca_phase6_r1_20260607T201434Z`
+  - `ops/evidence/fonseca_phase6_r2_20260608T113906Z`
+  - `ops/evidence/fonseca_phase8_manual_callback_20260608T170919Z`
+- Remaining closure gate:
+  - final manual browser QA pass after TRL replay (callback UX, content polish, responsive behavior)
 
