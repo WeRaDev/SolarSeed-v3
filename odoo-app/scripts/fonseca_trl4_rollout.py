@@ -71,6 +71,44 @@ def _normalize_unsupported_appointment_modules(env):
     return normalized
 
 
+def _cleanup_stale_appointment_assets(env):
+    module_states = {
+        module.name: module.state
+        for module in env["ir.module.module"].sudo().search([("name", "in", ["appointment", "website_appointment"])])
+    }
+    appointment_installed = module_states.get("appointment") == "installed"
+    website_appointment_installed = module_states.get("website_appointment") == "installed"
+    should_cleanup = not appointment_installed and not website_appointment_installed
+
+    stale_assets = env["ir.asset"].sudo().search(
+        [
+            ("bundle", "=", "web.assets_frontend"),
+            ("path", "ilike", "website_appointment/static/src/snippets/s_appointments/%"),
+            ("active", "=", True),
+        ]
+    )
+    stale_asset_ids = stale_assets.ids
+    deactivated_count = 0
+    deleted_asset_attachments = 0
+
+    if should_cleanup and stale_assets:
+        stale_assets.write({"active": False})
+        deactivated_count = len(stale_assets)
+
+        attachments = env["ir.attachment"].sudo().search([("url", "like", "/web/assets/%")])
+        deleted_asset_attachments = len(attachments)
+        if attachments:
+            attachments.unlink()
+
+    return {
+        "module_states": module_states,
+        "should_cleanup": should_cleanup,
+        "deactivated_asset_ids": stale_asset_ids if should_cleanup else [],
+        "deactivated_count": deactivated_count,
+        "deleted_asset_attachments": deleted_asset_attachments,
+    }
+
+
 def _ensure_enterprise_subscription(env):
     params = env["ir.config_parameter"].sudo()
     key = "database.enterprise_code"
@@ -502,6 +540,7 @@ def run(env):
         ]
     }
     results["unsupported_module_normalization"] = _normalize_unsupported_appointment_modules(env)
+    results["stale_appointment_asset_cleanup"] = _cleanup_stale_appointment_assets(env)
     appointment_module_installed = any(
         item.get("module") == "appointment" and item.get("state") == "installed"
         for item in results["modules"]
