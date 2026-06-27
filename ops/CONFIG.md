@@ -88,4 +88,12 @@ IMPORTANT:
   - `ops/evidence/fonseca_phase8_manual_callback_20260608T170919Z`
 - Remaining closure gate:
   - final manual browser QA pass after TRL replay (callback UX, content polish, responsive behavior)
+## 9) Console GUI and power management (2026-06-27)
+- Display manager: GDM (`gdm3` 48.0-2) enabled; default systemd target `graphical.target`.
+- Session server: Xorg (`/etc/gdm3/daemon.conf`: `WaylandEnable=false`).
+- Registration: `/etc/systemd/system/display-manager.service` -> `/usr/lib/systemd/system/gdm.service` (symlink; was missing before 2026-06-27, which is why the GUI did not start).
+- GPU: Intel iGPU (`i915`) + NVIDIA GTX 750 (`nouveau`); active connector `card0-VGA`.
+- Sleep policy (server must never suspend): `sleep.target`, `suspend.target`, `hibernate.target`, `hybrid-sleep.target`, `suspend-then-hibernate.target` are MASKED.
+- GNOME power policy for `wera` and `Debian-gdm` greeter: `sleep-inactive-ac-type='nothing'`, `sleep-inactive-battery-type='nothing'`, `idle-delay=0`. System override: `/etc/dconf/db/gdm.d/10-solarseed-nosleep` (compiled with `dconf update`).
+- Power button: unchanged (logind `HandlePowerKey` default; console press powers off, GUI-session press is a no-op under masked sleep).
 

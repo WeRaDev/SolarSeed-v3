@@ -234,3 +234,39 @@ Resolution summary for repeated cron failures and PostgreSQL collation warnings 
   - verify the operator key installed on TRL4 host for user `wera`
   - verify Tailscale ACL allows source machine access to the TRL4 node
   - retry with explicit key: `ssh -i ~/.ssh/id_ed25519 wera@100.82.194.96`
+
+## Console GUI and power management (TRL4)
+The lab machine runs a local GNOME desktop via GDM on the attached monitor. It must never sleep -- Tailscale/SSH and the Docker services depend on it staying awake.
+
+### Verify the GUI is up
+- `systemctl is-active display-manager` -> `active`
+- `systemctl status display-manager --no-pager`
+- `loginctl seat-status seat0` (expect a greeter or user session on the local seat)
+
+### Enable/repair the GUI (login screen missing)
+GNOME/GDM and `graphical.target` are already installed; the usual fault is a missing display-manager symlink.
+- `sudo ln -sfn /usr/lib/systemd/system/gdm.service /etc/systemd/system/display-manager.service`
+- `sudo systemctl daemon-reload`
+- `sudo systemctl start display-manager.service`
+
+### Verify the machine cannot suspend
+- `systemctl is-enabled sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target` -> all `masked`
+
+### Re-apply the no-suspend policy (if it drifts)
+- Mask sleep targets: `sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target`
+- Operator (`wera`): `sudo -u wera dbus-run-session -- sh -c 'gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type "nothing"; gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-type "nothing"; gsettings set org.gnome.desktop.session idle-delay 0'`
+- Greeter system override `/etc/dconf/db/gdm.d/10-solarseed-nosleep`, then `sudo dconf update`:
+```
+[org/gnome/settings-daemon/plugins/power]
+sleep-inactive-ac-type='nothing'
+sleep-inactive-battery-type='nothing'
+
+[org/gnome/desktop/session]
+idle-delay=uint32 0
+```
+
+### Diagnose "machine turns off regularly"
+- Distinguish suspend from poweroff:
+  - `sudo journalctl -b 0 --no-pager | grep -Ei 'The system will suspend now|systemd-suspend|Powering off'`
+  - `last -x | grep -Ei 'reboot|shutdown'` (poweroffs/reboots create new boots; suspends do not)
+- If it is suspends, re-apply the no-suspend policy above. Common cause: GNOME `gsd-power` idle auto-suspend introduced when the GUI was enabled.

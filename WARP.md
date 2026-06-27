@@ -60,6 +60,16 @@ Reference: ops/CONFIG.md for live values. Key facts for agent context:
   - Observability/data services (`col-alertmanager`, `col-cadvisor`, `col-node-exporter`, `col-postgres`, `col-redis`)
   - Odoo stack (`solarseed-odoo`, `solarseed-odoo-db`): **Odoo 19.0 Enterprise** (custom subscription `M240830172487565`). Enterprise code present in DB; Enterprise addon files not yet mounted in container `addons_path`.
 
+### Console GUI and power management (2026-06-27)
+- Local desktop GUI is enabled: GDM runs the GNOME login screen on the attached console. The host boots to `graphical.target`; the greeter uses Xorg (`/etc/gdm3/daemon.conf` sets `WaylandEnable=false`).
+- Enablement was a registration repair, not a new install. GNOME/GDM and the desktop tasks were already present but `/etc/systemd/system/display-manager.service` was missing, so nothing started the login screen:
+  - `sudo ln -sfn /usr/lib/systemd/system/gdm.service /etc/systemd/system/display-manager.service`
+  - `sudo systemctl daemon-reload && sudo systemctl start display-manager.service`
+- This server must never sleep (Tailscale/SSH + Docker services). The auto-suspend that ships with the GUI is disabled two ways:
+  - systemd sleep masked: `sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target`
+  - GNOME idle-suspend/screen-blank off for `wera` and the `Debian-gdm` greeter (`sleep-inactive-ac-type`/`battery-type='nothing'`, `idle-delay=0`), persisted via `/etc/dconf/db/gdm.d/10-solarseed-nosleep` (run `dconf update`).
+- Power button left at defaults: a console press still powers off; a press inside a GUI session is a no-op while sleep is masked.
+
 ### Soul covenant
 - `soul.md` written at `/data/city-of-light/soul.md` with Four Computable Invariants
 - HMAC-SHA256 hash: stored in `/data/city-of-light/.soul-hash`
@@ -437,3 +447,5 @@ When the agent fails or asks repeated questions:
 13. **Optimal LLM config for 8GB class**: `--ctx-size 32768 --cache-type-k q8_0 --cache-type-v q8_0 --flash-attn --mlock --no-mmap --threads 4`. Total RAM ~3.3 GB. Zero quality loss within 128K native training window. See "Optimal llama.cpp Context Window Configuration" research report.
 14. **Cityview is the mainframe interface**: All agent approvals flow through cityview Approval Quests. Future: multi-level approval system (Admin > internal agents > external agents > guests). Auto-approvals as mandates with time/quantity regulation via forkbomb.solutions.
 15. **Customs building (DIDroom/Authentik)**: Identity management across all machines and containers. Replaces per-service user registration. See "Nextcloud AIO + OpenFang + DIDroom/Authentik IAM" implementation guide.
+16. **Enable the console GUI by repairing the display-manager symlink, not reinstalling**: GNOME/GDM and `graphical.target` were already present, but `/etc/systemd/system/display-manager.service` was missing so nothing launched the login screen. Recreate the symlink to `/usr/lib/systemd/system/gdm.service`, `daemon-reload`, then `start display-manager.service` -- no desktop reinstall needed.
+17. **A GUI turns a server into a laptop -- disable sleep**: Enabling GDM activates `gsd-power`, which by default suspends the host after ~15 min idle on AC (`sleep-inactive-ac-type='suspend'`) at both the greeter and the user session. On a server this drops Tailscale/SSH and freezes Docker, and looks like a power-off. Mask the sleep targets and set GNOME `sleep-inactive-*-type='nothing'` + `idle-delay=0` for `wera` and `Debian-gdm`. Diagnose suspend vs poweroff with `journalctl ... 'The system will suspend now'` and `last -x` (suspends do not create new boots).
