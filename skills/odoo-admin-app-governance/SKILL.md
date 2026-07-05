@@ -35,8 +35,12 @@ Use this skill to:
 7. Audit website routing parity when website scope is involved:
    - Inspect `website.domain` and key redirect routes.
    - Probe with explicit `Host` headers and verify rendered website identity.
-8. If any corrective Odoo shell writes are executed, run `env.cr.commit()` and re-check.
-9. If login remains unknown/invalid, separate credential recovery from module governance findings.
+8. Audit website asset integrity when branding or CSS regressions are reported:
+   - Probe `/web/assets/<website_id>/debug/web.assets_frontend.css`.
+   - If fallback payload references missing addon paths, cross-check `ir.asset` rows vs module install state.
+   - Flag stale asset references tied to uninstalled modules as blocking.
+9. If any corrective Odoo shell writes are executed, run `env.cr.commit()` and re-check.
+10. If login remains unknown/invalid, separate credential recovery from module governance findings.
 
 ## Guardrails
 - Never claim login success without successful authentication response.

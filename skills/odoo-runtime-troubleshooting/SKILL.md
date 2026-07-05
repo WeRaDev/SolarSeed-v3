@@ -16,6 +16,8 @@ Use this skill when symptoms include:
 - `psycopg2.pool.PoolError: The Connection Pool Is Full`
 - Wrong website rendered for a host (domain/routing drift)
 - Styling/assets missing for one website while others render correctly
+- Red banner: `A css error occured, using an old style to render this page`
+- Browser toast: `Style error. The style compilation failed`
 
 ## Baseline triage sequence
 1. Check runtime state and recent logs.
@@ -53,6 +55,24 @@ Use this skill when symptoms include:
 1. Re-apply filestore copy and ownership.
 2. Verify key modules and marker routes.
 3. If SQL warnings occurred but runtime checks pass, classify warnings as non-blocking with explicit note.
+
+### E) Website-specific CSS fallback due stale frontend asset reference
+1. Confirm scope:
+   - Probe the affected website bundle directly:
+     - `/web/assets/<website_id>/debug/web.assets_frontend.css`
+   - If payload contains `css_error_message` and `Could not get content for ...`, continue.
+2. Extract missing path from CSS payload and map it to module ownership.
+3. Validate module state for the missing-path module(s):
+   - If corresponding module(s) are uninstalled, treat the asset entry as stale.
+4. Query stale `ir.asset` rows for the missing path and `web.assets_frontend` bundle.
+5. Remediate:
+   - Deactivate only stale matching `ir.asset` rows.
+   - Delete generated `/web/assets/%` attachment rows to force clean rebuild.
+   - Restart/reload Odoo runtime to refresh registry + bundle cache.
+6. Re-validate:
+   - CSS debug bundle no longer contains `css_error_message` fallback payload.
+   - Browser render has no red fallback banner and no style-compilation toast.
+   - Website route probes and key CTA path pass after rebuild.
 
 ## Persistence and rollout guardrails
 - Always run `env.cr.commit()` after Odoo shell writes that should survive subsequent checks.

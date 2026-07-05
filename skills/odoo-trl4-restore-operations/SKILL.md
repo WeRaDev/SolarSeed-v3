@@ -1,6 +1,6 @@
 ---
 name: odoo-trl4-restore-operations
-description: Execute the SolarSeed Odoo restore protocol from local dry-run through TRL replay. Use this whenever the user asks to install/configure Odoo, restore a backup, run verification tests, and publish the app safely via Tailscale on TRL.
+description: Execute the SolarSeed Odoo restore protocol from local dry-run through TRL replay, and prepare TRL5 setup/cutover safely. Use this whenever the user asks to install/configure Odoo, restore a backup, run verification tests, and publish the app via Tailscale or an approved public edge.
 ---
 
 # Odoo TRL4 restore operations (local -> TRL)
@@ -71,3 +71,37 @@ When done, report:
 - Verification evidence (login, routes, assets, module state, queue state).
 - Tailnet URL status (when configured).
 - Remaining blockers and the exact next manual test request.
+
+## TRL5 setup preparation package (pre-execution)
+Use this section before any TRL5 mutation.
+
+1. **TRL5 host baseline gate**
+   - Record host identity, Tailscale IP, Docker health, storage headroom, and current listeners.
+   - Confirm Odoo can remain loopback-bound on TRL5 (`127.0.0.1`) before edge publication.
+2. **Repository and artifact parity gate**
+   - Pin one branch+commit for replay.
+   - Verify `odoo-app` scripts, addon state, and backup artifacts match the pinned commit.
+3. **Runtime configuration gate**
+   - Confirm DB filter strictness (`^wera$` or approved equivalent).
+   - For public exposure prep, set `proxy_mode=True` and `list_db=False` in target runtime profile.
+4. **Ingress decision gate (choose one, document why)**
+   - **Cloudflare Tunnel path**: outbound-only tunnel from TRL5 to Cloudflare; no inbound ports opened on TRL5.
+   - **Public edge gateway path**: dedicated edge host (e.g., Linode) reverse-proxies over Tailscale to TRL5 Odoo.
+5. **Domain and DNS readiness gate**
+   - Verify control of apex and `www` records.
+   - Predefine cutover + rollback records and low TTL strategy.
+6. **Validation gate (required before handoff)**
+   - External HTTPS probe by domain.
+   - Host-routing correctness for intended website.
+   - CTA and intake flow pass from public endpoint.
+   - Asset debug bundle contains no fallback error payload.
+7. **Rollback gate**
+   - Keep previous DNS target and previous ingress config restorable in one step.
+   - Document exact rollback command sequence and expected recovery probe.
+
+## High-impact confirmation checkpoints
+Require explicit approval before:
+- DNS cutover for production domain.
+- Any firewall/listener changes on TRL5.
+- TLS/edge credential installation or rotation.
+- Switching from tailnet-only exposure to public internet exposure.
