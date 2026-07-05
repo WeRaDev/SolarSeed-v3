@@ -41,3 +41,13 @@ IMPORTANT:
 ## 6) Validation timestamp
 - Last verified from operator workstation over Tailscale SSH: `2026-05-30`
 
+## 7) Post-remediation operational state (2026-07-05)
+- `openipmi.service` is intentionally `masked` and `inactive` on this host (no `/dev/ipmi*` BMC device path present).
+- Tailscale operator user is set to `wera-admin`.
+- Tailnet HTTPS endpoint `https://wera-ss-pt-tv-1.tailfb390c.ts.net` is served via persisted Tailscale serve state:
+  - `/` -> `http://127.0.0.1:11000` (Nextcloud Apache)
+- `tailscale-serve-nextcloud.service` is intentionally `disabled` to avoid boot-time false failures while preserving working tailnet serve state.
+- Post-reboot verification result (2026-07-05):
+  - `systemctl --failed` returned no failed units.
+  - Docker health remained `16 healthy`, `2 no-healthcheck`.
+

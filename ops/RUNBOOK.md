@@ -114,3 +114,19 @@ curl -s -X POST http://localhost:4200/api/agents \
   - verify the operator key installed on TRL5 host for user `wera-admin`
   - verify Tailscale ACL allows source machine access to the TRL5 node
   - retry with explicit key: `ssh -i ~/.ssh/id_ed25519 wera-admin@wera-ss-pt-tv-1.tailfb390c.ts.net`
+
+## TRL5 stabilization notes (2026-07-05)
+- Tailscale operator user for TRL5 is `wera-admin`:
+  - `sudo tailscale set --operator=wera-admin`
+- Nextcloud tailnet exposure is managed via persisted Tailscale serve state:
+  - `sudo tailscale serve --bg http://127.0.0.1:11000`
+  - check with `tailscale serve status`
+- `tailscale-serve-nextcloud.service` is intentionally disabled to avoid boot-time false failures (`unexpected state: NoState`) because serve state already persists in tailscaled:
+  - `sudo systemctl disable --now tailscale-serve-nextcloud.service`
+- `openipmi.service` is intentionally masked on current TRL5 hardware profile (no usable local BMC device path):
+  - `sudo systemctl disable --now openipmi.service`
+  - `sudo systemctl mask openipmi.service`
+- Post-change verification commands:
+  - `systemctl --failed --no-pager --plain`
+  - `curl -I --max-time 8 https://wera-ss-pt-tv-1.tailfb390c.ts.net`
+  - `docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' $(docker ps -q) | sort | uniq -c`
