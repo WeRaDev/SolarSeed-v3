@@ -270,3 +270,23 @@ idle-delay=uint32 0
   - `sudo journalctl -b 0 --no-pager | grep -Ei 'The system will suspend now|systemd-suspend|Powering off'`
   - `last -x | grep -Ei 'reboot|shutdown'` (poweroffs/reboots create new boots; suspends do not)
 - If it is suspends, re-apply the no-suspend policy above. Common cause: GNOME `gsd-power` idle auto-suspend introduced when the GUI was enabled.
+
+## Deploy FilantropiaSolar (Fortress) on TRL4
+The FilantropiaSolar Nextcloud + ML stack ("Fortress") is deployed from the FilantropiaSolar repo (branch `main`) and attached to this stack's `city_internal` network so Prometheus/Spirit can monitor it.
+
+1. Deployable ref: FilantropiaSolar `main` (Nextcloud admin app + ML service + Odoo public site).
+2. Bring up the Fortress (from the FilantropiaSolar checkout):
+   - `bash nextcloud-app/scripts/setup.sh`  # NC:8080, ML:8501; imports dataset, trains models, writes the public API token to ../SolarSeed-v3/.secrets/filantropia_public_api_token
+3. Bring up this ops stack:
+   - `docker compose -f compose/docker-compose.yml up -d`
+4. Attach the Fortress to city_internal:
+   - `bash <FilantropiaSolar>/nextcloud-app/scripts/connect-trl4.sh`  (or: docker network connect compose_city_internal filantropia-nextcloud ; and the same for filantropia-ml)
+5. Verify monitoring:
+   - Spirit status: `curl -s http://localhost:9105/api/v1/status | jq '.buildings'`  (expects nextcloud + ml reachable)
+   - From a city_internal container: `curl -s http://filantropia-ml:8501/health` and `curl -s http://filantropia-nextcloud/status.php`
+6. Optional public site (Odoo): in the FilantropiaSolar checkout, export FS_PUBLIC_API_TOKEN from ../SolarSeed-v3/.secrets/filantropia_public_api_token then `docker compose --profile odoo up -d`.
+
+Rollback:
+- Detach: `docker network disconnect compose_city_internal filantropia-nextcloud` (and filantropia-ml)
+- Fortress: `docker compose -f nextcloud-app/docker-compose.yml down` (named volumes persist); redeploy a prior ref via `git checkout <tag>` then setup.sh.
+- Ops stack: `docker compose -f compose/docker-compose.yml down` (data persists in named volumes).
