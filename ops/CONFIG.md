@@ -96,4 +96,16 @@ IMPORTANT:
 - Sleep policy (server must never suspend): `sleep.target`, `suspend.target`, `hibernate.target`, `hybrid-sleep.target`, `suspend-then-hibernate.target` are MASKED.
 - GNOME power policy for `wera` and `Debian-gdm` greeter: `sleep-inactive-ac-type='nothing'`, `sleep-inactive-battery-type='nothing'`, `idle-delay=0`. System override: `/etc/dconf/db/gdm.d/10-solarseed-nosleep` (compiled with `dconf update`).
 - Power button: unchanged (logind `HandlePowerKey` default; console press powers off, GUI-session press is a no-op under masked sleep).
+## 10) Nextcloud AIO hardening and backup status (2026-07-17)
+- Nextcloud AIO now follows the TRL5 tailnet-domain pattern while preserving the TRL4 Odoo tailnet route on port 443.
+- Nextcloud tailnet URL: `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443`
+- Nextcloud local backend: `http://127.0.0.1:11000`
+- AIO admin panel: `https://127.0.0.1:8080`
+- Apache binding: `127.0.0.1:11000->11000/tcp`; LAN access to `192.168.1.71:11000` is closed.
+- Last verified Nextcloud version: `33.0.6.2` (`33.0.6`).
+- Backup path: `/data/backups`; Borg repository initialized at `/data/backups/borg`.
+- Last successful backup archive: `20260717_000110-nextcloud-aio`, fingerprint `5a953c068dba1b01417abe3a9376a7d7e75285e5e5cf0d0ad5e50c4c12b2834a`.
+- AIO community containers enabled on TRL4: `fail2ban`, `nextcloud-exporter`; Docker socket proxy enabled.
+- ClamAV remains disabled (`isClamavEnabled=0`) due to an AIO child-container log-level propagation issue.
+- Full operational runbook: `ops/NEXTCLOUD_AIO_TRL4.md`.
 

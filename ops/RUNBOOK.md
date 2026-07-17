@@ -93,12 +93,60 @@ curl -s -X POST http://localhost:4200/api/agents \
   - access URL and admin credentials are stored on host in `/home/wera/.secrets/gitea-admin.env`
 
 ## Fortress integration checklist
-- Nextcloud reachable: `http://localhost:8080`
-- Nextcloud AIO admin UI reachable: `https://localhost:8443`
+- Nextcloud reachable on TRL4: `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443`
+- Nextcloud local backend: `http://127.0.0.1:11000`
+- Nextcloud AIO admin UI reachable locally: `https://127.0.0.1:8080`
+- Nextcloud AIO detailed operations and backup runbook: `ops/NEXTCLOUD_AIO_TRL4.md`
 - FilantropiaSolar app enabled in Nextcloud and configured with:
   - Prometheus endpoint: `http://prometheus:9090`
   - Spirit endpoint: `http://spirit:9105`
   - Rundeck endpoint: `http://rundeck:4440`
+
+## Nextcloud AIO on TRL4
+Use `ops/NEXTCLOUD_AIO_TRL4.md` as the canonical runbook for the current TRL4 AIO deployment.
+
+### Verify Nextcloud health
+- Local:
+  - `curl -sk http://127.0.0.1:11000/status.php | python3 -m json.tool`
+- Tailnet:
+  - `curl -sk https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443/status.php | python3 -m json.tool`
+- Expected:
+  - `installed: true`
+  - `maintenance: false`
+  - `needsDbUpgrade: false`
+
+### Verify loopback-only binding
+- `docker inspect nextcloud-aio-apache --format '{{json .HostConfig.PortBindings}}' | python3 -m json.tool`
+- Expected: `127.0.0.1:11000->11000/tcp`
+- LAN check should fail:
+  - `curl -sk --connect-timeout 3 http://192.168.1.71:11000/ -o /dev/null -w '%{http_code}\n'`
+
+### Manual backup procedure
+- AIO blocks direct admin login while `nextcloud-aio-apache` is running; stop Apache first:
+  - `docker stop nextcloud-aio-apache`
+- Read the AIO password through the mastercontainer (do not use host sudo for this):
+  - `AIO_PASS=$(docker exec nextcloud-aio-mastercontainer python3 -c "import json; print(json.load(open('/mnt/docker-aio-config/data/configuration.json'))['password'])")`
+- Authenticate to `https://127.0.0.1:8080`, then post with CSRF tokens to:
+  - `https://127.0.0.1:8080/api/docker/backup`
+- Monitor:
+  - `docker ps -a --format 'table {{.Names}}\t{{.Status}}' | grep nextcloud-aio-borgbackup`
+  - `docker logs nextcloud-aio-borgbackup --tail=120`
+- Success criteria:
+  - `nextcloud-aio-borgbackup` exits `0`
+  - logs contain `Backup finished successfully`
+  - Borg repository exists at `/data/backups/borg`
+
+### Last successful backup evidence
+- Archive: `20260717_000110-nextcloud-aio`
+- Fingerprint: `5a953c068dba1b01417abe3a9376a7d7e75285e5e5cf0d0ad5e50c4c12b2834a`
+- Original size: `1.63 GB`; compressed: `574.12 MB`; deduplicated: `490.21 MB`
+- Completed: `17.07.2026 - 00:02:27`
+
+### Known AIO log-level caveat
+- Current AIO child images can expect `ENV_AIO_LOG_LEVEL`, but AIO may not pass it to all child containers.
+- PostgreSQL accepted `AIO_LOG_LEVEL=warn`, mapping to `log_min_messages = warning`.
+- Nextcloud required patching `/supervisord.conf` from `loglevel=%(ENV_AIO_LOG_LEVEL)s` to `loglevel=warn`.
+- If AIO recreates the Nextcloud child container and it fails with missing `ENV_AIO_LOG_LEVEL`, reapply the supervisor patch or upgrade to an AIO image that passes the variable correctly.
 
 ## Odoo stack on TRL4 (restore profile)
 - Host workspace:

@@ -1,0 +1,150 @@
+# TRL4 Nextcloud AIO Operations
+## Scope
+This runbook records the final Nextcloud All-in-One (AIO) configuration on TRL4 (`wera-ss-pt-sn-1`) after the TRL5-aligned hardening and backup validation session on 2026-07-16/17.
+TRL5 reference host: `wera-ss-pt-tv-1.tailfb390c.ts.net`.
+TRL4 target host: `wera-ss-pt-sn-1.tailfb390c.ts.net`.
+## Current access profile
+- Nextcloud tailnet URL: `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443`
+- Nextcloud local backend: `http://127.0.0.1:11000`
+- AIO admin panel: `https://127.0.0.1:8080`
+- OpenFang tailnet webhook/API: `https://wera-ss-pt-sn-1.tailfb390c.ts.net:4200`
+- Existing Odoo tailnet URL remains on default HTTPS port 443: `https://wera-ss-pt-sn-1.tailfb390c.ts.net`
+## Tailscale serve rules
+Expected `tailscale serve status` entries:
+- `https://wera-ss-pt-sn-1.tailfb390c.ts.net/` -> `http://127.0.0.1:8069` (Odoo)
+- `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443/` -> `http://127.0.0.1:11000` (Nextcloud)
+- `https://wera-ss-pt-sn-1.tailfb390c.ts.net:4200/` -> `http://127.0.0.1:4200` (OpenFang)
+## Security binding
+`nextcloud-aio-apache` must bind only to loopback:
+- Expected port binding: `127.0.0.1:11000->11000/tcp`
+- LAN check: `curl --connect-timeout 3 http://192.168.1.71:11000/` should fail or return HTTP code `000`.
+Do not expose `11000` on `0.0.0.0`.
+## AIO configuration subset
+AIO config file inside the mastercontainer volume:
+- Host path: `/var/lib/docker/volumes/nextcloud_aio_mastercontainer/_data/data/configuration.json`
+- Container path: `/mnt/docker-aio-config/data/configuration.json`
+Expected values:
+- `domain`: `wera-ss-pt-sn-1.tailfb390c.ts.net`
+- `apache_ip_binding`: `127.0.0.1`
+- `borg_backup_host_location`: `/data/backups`
+- `backup-mode`: `backup`
+- `isClamavEnabled`: `0`
+- `isDockerSocketProxyEnabled`: `1`
+- `aio_community_containers`: `fail2ban nextcloud-exporter`
+ClamAV is intentionally disabled on TRL4 until the AIO child-container log-level propagation issue is resolved.
+## Expected container status
+Core containers:
+- `nextcloud-aio-mastercontainer`: healthy
+- `nextcloud-aio-apache`: healthy, loopback-bound on `127.0.0.1:11000`
+- `nextcloud-aio-nextcloud`: healthy
+- `nextcloud-aio-database`: healthy
+- `nextcloud-aio-redis`: healthy
+Enabled services:
+- `nextcloud-aio-docker-socket-proxy`: healthy
+- `nextcloud-aio-imaginary`: healthy
+- `nextcloud-aio-whiteboard`: healthy
+- `nextcloud-aio-notify-push`: healthy
+- `nextcloud-aio-talk`: healthy, exposes TURN/STUN on `3478/tcp+udp`
+- `nextcloud-aio-collabora`: healthy
+- `nextcloud-aio-nextcloud-exporter`: running on `127.0.0.1:9205`
+- `nextcloud-aio-fail2ban`: running
+Backup container:
+- `nextcloud-aio-borgbackup`: exits after backup; expected success state is `Exited (0)`.
+## Health checks
+Run:
+```bash
+curl -sk http://127.0.0.1:11000/status.php | python3 -m json.tool
+curl -sk https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443/status.php | python3 -m json.tool
+```
+Expected fields:
+- `installed: true`
+- `maintenance: false`
+- `needsDbUpgrade: false`
+Last verified version after the update/backup run:
+- `version`: `33.0.6.2`
+- `versionstring`: `33.0.6`
+## Manual backup procedure
+AIO blocks direct admin login while `nextcloud-aio-apache` is running. For CLI-triggered backup operations, stop Apache first to unblock the local AIO panel login.
+1. Stop Apache temporarily:
+```bash
+docker stop nextcloud-aio-apache
+```
+2. Authenticate to AIO and trigger a manual backup through the AIO route `POST /api/docker/backup`.
+Operational notes:
+- Read the AIO password through the mastercontainer, not via host `sudo`:
+```bash
+AIO_PASS=$(docker exec nextcloud-aio-mastercontainer python3 -c "import json; print(json.load(open('/mnt/docker-aio-config/data/configuration.json'))['password'])")
+```
+- Use the CSRF values from the AIO login/admin pages.
+- The manual backup endpoint is `https://127.0.0.1:8080/api/docker/backup`.
+- AIO stops the core stack while the BorgBackup container runs.
+3. Monitor backup completion:
+```bash
+docker ps -a --format 'table {{.Names}}\t{{.Status}}' | grep nextcloud-aio-borgbackup
+docker logs nextcloud-aio-borgbackup --tail=120
+```
+Success criteria:
+- `nextcloud-aio-borgbackup` exits with code `0`.
+- Logs include `Backup finished successfully`.
+- `/data/backups/borg` exists and contains Borg repository files.
+## Last successful backup evidence
+Manual backup test completed successfully.
+- Archive name: `20260717_000110-nextcloud-aio`
+- Archive fingerprint: `5a953c068dba1b01417abe3a9376a7d7e75285e5e5cf0d0ad5e50c4c12b2834a`
+- Original size: `1.63 GB`
+- Compressed size: `574.12 MB`
+- Deduplicated size: `490.21 MB`
+- Completion time: `17.07.2026 - 00:02:27`
+- Duration: `00 hours 01 minutes 17 seconds`
+Repository path:
+```bash
+/data/backups/borg
+```
+## Backup test mode caveat
+The AIO `POST /api/docker/backup-test` route expects an existing Borg repository at `/data/backups/borg`.
+On a brand-new empty backup directory, `backup-test` can fail with:
+```text
+No 'borg' directory in the given backup directory found!
+```
+For first-time setup, run the full manual backup first. After `/data/backups/borg` exists, use AIO's check/test operations.
+## Service recovery after backup
+After backup completion, restart the AIO stack from the AIO interface or API. If manual recovery is needed:
+```bash
+docker start nextcloud-aio-database nextcloud-aio-redis
+docker start nextcloud-aio-nextcloud
+docker start nextcloud-aio-apache
+```
+Then verify:
+```bash
+docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep nextcloud-aio
+curl -sk http://127.0.0.1:11000/status.php | python3 -m json.tool
+curl -sk https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443/status.php | python3 -m json.tool
+```
+## Known AIO log-level caveat
+During the 2026-07-17 backup/update run, current AIO child images expected `ENV_AIO_LOG_LEVEL` in their supervisor/PostgreSQL configs, but AIO did not pass that variable into all child containers.
+Observed symptoms:
+- PostgreSQL generated `log_min_messages =` with an empty value and failed to start.
+- Nextcloud's `/supervisord.conf` referenced `%(ENV_AIO_LOG_LEVEL)s` and failed when the env var was missing.
+Applied recovery:
+- Recreated `nextcloud-aio-mastercontainer` with supported `AIO_LOG_LEVEL=warn`.
+- Recreated/started PostgreSQL with `AIO_LOG_LEVEL=warn`; resulting config line is `log_min_messages = warning`.
+- Patched `nextcloud-aio-nextcloud:/supervisord.conf` to use `loglevel=warn`.
+Important: this in-container supervisor patch may be lost if AIO recreates the Nextcloud child container. If Nextcloud fails with a missing `ENV_AIO_LOG_LEVEL` error after a future AIO update, reapply the patch or wait for an upstream AIO image fix.
+## TRL5 Talk integration
+TRL4 OpenFang is registered in the Talk app on TRL5.
+- TRL5 Nextcloud: `wera-ss-pt-tv-1.tailfb390c.ts.net`
+- Bot name: `TRL4 City Agent`
+- Bot ID: `1`
+- Room: `City of Light Ops`
+- Room token: `rkc9y36g`
+- Webhook URL: `https://wera-ss-pt-sn-1.tailfb390c.ts.net:4200/nextcloud-talk-webhook`
+## Gitea wiki publication
+The same runbook was published to the local Gitea wiki repository:
+- Repository: `wera-global/solarseed-v3.wiki.git`
+- Page: `Nextcloud-AIO-Operations.md`
+- Commit: `87801b6cac5ceb53730de522783a2013af8e1daf`
+- Author: `WARP <warp@wera.global>`
+## Remaining follow-ups
+- Sync the FilantropiaSolar `nextcloud-app` source onto TRL4 before installing the app.
+- Add `nextcloud-aio-nextcloud-exporter:9205` to Prometheus scraping if not already present.
+- Revisit ClamAV after the AIO log-level propagation issue is fixed.
