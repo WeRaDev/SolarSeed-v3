@@ -1,0 +1,13 @@
+nextcloud-aio-apache                Up 8 minutes (healthy)             80/tcp, 127.0.0.1:11000->11000/tcp
+nextcloud-aio-nextcloud             Up 8 minutes (healthy)             9000/tcp
+nextcloud-aio-mastercontainer       Up 4 hours (healthy)               80/tcp, 8443/tcp, 9000/tcp, 127.0.0.1:8080->8080/tcp
+nextcloud-aio-database              Up 9 minutes (healthy)             5432/tcp
+nextcloud-aio-docker-socket-proxy   Up 9 minutes (healthy)             
+nextcloud-aio-imaginary             Up 8 minutes (healthy)             
+nextcloud-aio-whiteboard            Up 8 minutes (healthy)             3002/tcp
+nextcloud-aio-notify-push           Up 8 minutes (healthy)             
+nextcloud-aio-talk                  Up 8 minutes (healthy)             0.0.0.0:3478->3478/tcp, 0.0.0.0:3478->3478/udp, [::]:3478->3478/tcp, [::]:3478->3478/udp
+nextcloud-aio-collabora             Restarting (70) 42 seconds ago     
+nextcloud-aio-nextcloud-exporter    Up 8 minutes                       127.0.0.1:9205->9205/tcp
+nextcloud-aio-fail2ban              Up 8 minutes                       
+nextcloud-aio-redis                 Up 9 minutes (healthy)             6379/tcp

@@ -144,7 +144,19 @@ The same runbook was published to the local Gitea wiki repository:
 - Page: `Nextcloud-AIO-Operations.md`
 - Commit: `87801b6cac5ceb53730de522783a2013af8e1daf`
 - Author: `WARP <warp@wera.global>`
+## Recovery event: 2026-07-25
+- All AIO child containers had stopped ~6 days prior while the mastercontainer remained running.
+- Recovery action: started containers in dependency order via `docker start` (mastercontainer API not used because containers and config were already intact).
+- Verified state after recovery:
+  - All core AIO containers `Up` and `healthy`.
+  - `status.php` returns `installed: true`, `maintenance: false`, `needsDbUpgrade: false` on both `http://127.0.0.1:11000` and `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443`.
+  - Apache binding remains `127.0.0.1:11000` only; LAN check to `192.168.1.71:11000` returns `000`.
+- Prometheus now scrapes `nextcloud-aio-nextcloud-exporter:9205`:
+  - Added job to `/data/city-of-light/prometheus.yml`.
+  - Attached `col-prometheus` to the `nextcloud-aio` Docker network in `/data/city-of-light/docker-compose.yml` so DNS resolves.
+  - Verified target `up` in Prometheus.
+- Evidence saved to `ops/evidence/nextcloud_aio_refresh_20260725T000829Z/`.
+
 ## Remaining follow-ups
 - Sync the FilantropiaSolar `nextcloud-app` source onto TRL4 before installing the app.
-- Add `nextcloud-aio-nextcloud-exporter:9205` to Prometheus scraping if not already present.
-- Revisit ClamAV after the AIO log-level propagation issue is fixed.
+- Revisit ClamAV after the AIO log-level propagation issue is fixed upstream.
