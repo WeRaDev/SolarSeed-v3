@@ -1,8 +1,9 @@
 # TRL4 Nextcloud AIO Operations
 ## Scope
-This runbook records the final Nextcloud All-in-One (AIO) configuration on TRL4 (`wera-ss-pt-sn-1`) after the TRL5-aligned hardening and backup validation session on 2026-07-16/17.
+This runbook records Nextcloud All-in-One (AIO) configuration on TRL4 station **Frank** (`wera-ss-pt-sn-1`) after the TRL5-aligned hardening, datadir migration to Samsung LUKS, Docker data-root move, and backup validation (through 2026-08-11).
 TRL5 reference host: `wera-ss-pt-tv-1.tailfb390c.ts.net`.
-TRL4 target host: `wera-ss-pt-sn-1.tailfb390c.ts.net`.
+TRL4 target host: `wera-ss-pt-sn-1.tailfb390c.ts.net` (station Frank).
+Station document: `ops/stations/FRANK.md`.
 ## Current access profile
 - Nextcloud tailnet URL: `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443`
 - Nextcloud local backend: `http://127.0.0.1:11000`
@@ -19,6 +20,34 @@ Expected `tailscale serve status` entries:
 - Expected port binding: `127.0.0.1:11000->11000/tcp`
 - LAN check: `curl --connect-timeout 3 http://192.168.1.71:11000/` should fail or return HTTP code `000`.
 Do not expose `11000` on `0.0.0.0`.
+## Nextcloud datadir (Samsung LUKS, 2026-08-11)
+User files live on the encrypted Samsung disk, not the default Docker volume.
+- Host disk: `ata-SAMSUNG_HD501LJ_S0VVJ1PP402262` (`/dev/sdb`)
+- LUKS mapper: `nextcloud_data`
+- Filesystem label: `nextcloud-data` (ext4)
+- Mountpoint: `/mnt/nextcloud-data` (~458G)
+- Keyfile: `/data/.secrets/nextcloud-data.key`
+- crypttab: `nextcloud_data UUID=<sdb1-uuid> /data/.secrets/nextcloud-data.key luks,nofail`
+- fstab: `/dev/mapper/nextcloud_data /mnt/nextcloud-data ext4 defaults,nofail,x-systemd.device-timeout=10s 0 2`
+- Mastercontainer env: `NEXTCLOUD_DATADIR=/mnt/nextcloud-data` and `AIO_LOG_LEVEL=warn`
+- AIO config key: `nextcloud_datadir=/mnt/nextcloud-data`
+- Nextcloud bind: host `/mnt/nextcloud-data` -> container `/mnt/ncdata`
+- `occ config:system:get datadirectory` must return `/mnt/ncdata`
+Bootstrap scripts:
+- `ops/bootstrap/format-samsung-nextcloud-data.sh`
+- `ops/bootstrap/migrate-aio-datadir-to-samsung.sh`
+- `ops/bootstrap/aio-start-with-new-datadir.sh`
+- `ops/bootstrap/fix-aio-loglevel-and-start.py`
+After mastercontainer recreate, child containers may omit `AIO_LOG_LEVEL`. If Postgres/Redis/Nextcloud crash with empty `log_min_messages` / `loglevel ""` / missing `ENV_AIO_LOG_LEVEL` in supervisord, recreate those children with `-e AIO_LOG_LEVEL=warn` and/or patch `/supervisord.conf` `loglevel=warn` (see Known AIO log-level caveat).
+Old volume `nextcloud_aio_nextcloud_data` can remain as cold backup until a successful Borg backup after migration; do not delete until verified.
+## Docker data-root (City bulk, 2026-08-11)
+Docker Engine data-root was moved off `/` onto City bulk LUKS:
+- `data-root`: `/data-bulk/docker`
+- daemon config: `/etc/docker/daemon.json` (`{"data-root": "/data-bulk/docker"}`)
+- bulk volume: LUKS `data_bulk` on ST1000 `sda3`, mounted at `/data-bulk`
+- bootstrap script: `ops/bootstrap/migrate-docker-root-to-data-bulk.sh`
+- pre-move backup tree on root (delete only after multi-day stability): `/var/lib/docker.pre-data-bulk-*`
+After this move, image/layer growth consumes `/data-bulk`, not the 93G root filesystem.
 ## AIO configuration subset
 AIO config file inside the mastercontainer volume:
 - Host path: `/var/lib/docker/volumes/nextcloud_aio_mastercontainer/_data/data/configuration.json`
@@ -63,6 +92,12 @@ Expected fields:
 Last verified version after the update/backup run:
 - `version`: `33.0.6.2`
 - `versionstring`: `33.0.6`
+Post datadir migration verification (2026-08-11):
+- `version`: `33.0.7.1`
+- `versionstring`: `33.0.7`
+- `installed: true`, `maintenance: false`, `needsDbUpgrade: false`
+- ncdata bind source: `/mnt/nextcloud-data`
+- local + tailnet `:8443` `status.php` HTTP 200
 ## Manual backup procedure
 AIO blocks direct admin login while `nextcloud-aio-apache` is running. For CLI-triggered backup operations, stop Apache first to unblock the local AIO panel login.
 1. Stop Apache temporarily:
@@ -88,7 +123,15 @@ Success criteria:
 - Logs include `Backup finished successfully`.
 - `/data/backups/borg` exists and contains Borg repository files.
 ## Last successful backup evidence
-Manual backup test completed successfully.
+Manual backup after datadir + Docker root migration completed successfully.
+- Archive name: `20260811_013544-nextcloud-aio`
+- Completion time: `11.08.2026 - 01:36:36`
+- Duration: `00 hours 00 minutes 52 seconds`
+- Borg summary after prune/compact: all archives original `3.27 GB`, compressed `1.13 GB`, deduplicated `751.73 MB`
+- AIO list entries:
+  - `20260717_000110-nextcloud-aio,2026-07-17 00:01:10`
+  - `20260811_013544-nextcloud-aio,2026-08-11 01:35:45`
+Prior baseline backup (pre-migration):
 - Archive name: `20260717_000110-nextcloud-aio`
 - Archive fingerprint: `5a953c068dba1b01417abe3a9376a7d7e75285e5e5cf0d0ad5e50c4c12b2834a`
 - Original size: `1.63 GB`

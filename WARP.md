@@ -1,8 +1,10 @@
 # WARP.md -- City of Light TRL4 (Lab Deployment)
 
-Purpose: Operational guide for Warp Agent Mode to develop, deploy, and operate the City of Light on the TRL4 lab machine (wera-ss-pt-sn-1). This file bridges the deployed v3.1 reality with the v5 architectural specification.
+Purpose: Operational guide for Warp Agent Mode to develop, deploy, and operate the City of Light on the TRL4 lab machine (wera-ss-pt-sn-1), station callsign **Frank**. This file bridges the deployed v3.1 reality with the v5 architectural specification.
 
 Stage: **TRL4** -- Lab validation with unlimited energy. After TRL4 success, repeat in field with limited solar power (TRL5+).
+
+Live station state (storage, ports, health): `ops/stations/FRANK.md` and `ops/CONFIG.md`.
 
 ---
 
@@ -30,35 +32,35 @@ The City of Light is a sovereign living host for natural and artificial agents, 
 
 The Kabbalistic Tree of Life is Spirit's **internal cognitive language** -- not the service topology. Agents and operators interact with the Seven Pillars.
 
-## 2) TRL4 lab machine (wera-ss-pt-sn-1)
+## 2) TRL4 lab machine Frank (wera-ss-pt-sn-1)
 
-Reference: ops/CONFIG.md for live values. Key facts for agent context:
+Reference: `ops/stations/FRANK.md` (full) and `ops/CONFIG.md` (compact). Key facts for agent context (2026-08-11):
 
-- **Hardware**: Intel i5-4430 (4 cores), 8 GB RAM class, 1TB HDD; Intel iGPU (i915) + NVIDIA GTX 750 (nouveau)
-- **OS**: Debian 13 (Trixie)
-- **Network**: LAN 192.168.1.71; Tailscale active
-- **Storage**:
-  - Root FS: ext4 on `/dev/sda7` (must be mounted `rw`)
-  - Separate LUKS volume may exist (e.g. `/dev/sda9`, TYPE=crypto_LUKS) and can be used for `/data` once `crypttab`/`fstab` are correct
+- **Station name**: Frank
+- **Hardware**: Intel i5-4440 (4 cores), ~16 GB RAM, dual HDD (ST1000 system + Samsung NC data)
+- **OS**: Debian 13.5 (Trixie), kernel `6.12.95+deb13-amd64`
+- **Network**: LAN 192.168.1.71; Tailscale `100.82.194.96` / `wera-ss-pt-sn-1.tailfb390c.ts.net`
+- **Storage** (prefer by-id; sdX can swap):
+  - `/` ext4 on ST1000 root partition (~93G) -- OS only
+  - `/data` LUKS `data_crypt` (ST1000) -- City configs/secrets
+  - `/data-bulk` LUKS `data_bulk` (ST1000 former Data1) -- Docker data-root `/data-bulk/docker`
+  - `/mnt/nextcloud-data` LUKS `nextcloud_data` (Samsung full disk) -- AIO datadir
 - **Power**: Unlimited (grid) at TRL4. Solar constraints apply at TRL5+.
 
-### Runtime snapshot (as of 2026-05-30)
+### Runtime snapshot (as of 2026-08-11)
 
-- Running containers: 23
-- Health summary:
-  - 18 containers reported `healthy`
-  - 5 containers are running without Docker healthcheck (`poly-robot-runtime-supervisor-1`, `poly-robot-runtime-gui`, `col-spirit`, `col-alertmanager`, `col-node-exporter`)
-- Core City services currently healthy:
+- Docker data-root: `/data-bulk/docker` (Engine 29.6.1)
+- Running containers: ~25–26 (City + Nextcloud AIO)
+- Core healthy services:
   - `col-openfang` (127.0.0.1:4200)
-  - `col-prometheus` (127.0.0.1:9090)
-  - `col-llama-cpp` (127.0.0.1:8081)
-  - `col-gitea` (127.0.0.1:3000, 127.0.0.1:2222)
-  - `nextcloud-aio-mastercontainer` (127.0.0.1:8080)
-- Additional active service groups:
-  - Nextcloud AIO app containers (`aio-apache`, `aio-nextcloud`, `aio-redis`, `aio-database`, `aio-talk`, `aio-collabora`, etc.)
-  - Poly-Robot runtime (`poly-robot-runtime-supervisor-1`, `poly-robot-runtime-gui`)
-  - Observability/data services (`col-alertmanager`, `col-cadvisor`, `col-node-exporter`, `col-postgres`, `col-redis`)
-  - Odoo stack (`solarseed-odoo`, `solarseed-odoo-db`): **Odoo 19.0 Enterprise** (custom subscription `M240830172487565`). Enterprise code present in DB; Enterprise addon files not yet mounted in container `addons_path`.
+  - `col-prometheus` (host publish 9090)
+  - `col-llama-cpp` (host publish 8081)
+  - `col-spirit` (host publish 9105)
+  - `col-gitea` (127.0.0.1:3000/2222; health may flap)
+  - Nextcloud AIO (`127.0.0.1:11000`, admin `127.0.0.1:8080`), NC **33.0.7.1**, datadir `/mnt/nextcloud-data`
+  - cityview UI + operator-gateway
+- Not running at snapshot: Odoo, Poly-Robot
+- Latest NC Borg archive: `20260811_013544-nextcloud-aio`
 
 ### Console GUI and power management (2026-06-27)
 - Local desktop GUI is enabled: GDM runs the GNOME login screen on the attached console. The host boots to `graphical.target`; the greeter uses Xorg (`/etc/gdm3/daemon.conf` sets `WaylandEnable=false`).
@@ -84,7 +86,9 @@ Reference: ops/CONFIG.md for live values. Key facts for agent context:
 | Caddy 2 | Gateway (reverse proxy) | LOW | Nextcloud AIO handles its own HTTPS |
 | RxInferServer.jl | Spirit Bayesian engine | FUTURE | Planned Spirit upgrade from Python |
 | DIDroom/Authentik | Customs (IAM) | HIGH | Identity management across all machines and containers. See implementation guide. |
-### Resource budget (8 GB class)
+### Resource budget (~16 GB class on Frank)
+
+Compose memory limits for City services remain conservative; host has ~16 GiB RAM.
 
 | Service | Memory Limit | CPU Limit | Notes |
 |---------|-------------|-----------|-------|
@@ -96,8 +100,9 @@ Reference: ops/CONFIG.md for live values. Key facts for agent context:
 | cAdvisor | 128 MB | 0.5 cores | |
 | node-exporter | 64 MB | 0.1 cores | |
 | Redis | 256 MB | 0.25 cores | Event bus for agents |
-| OpenFang (v0.5.2) | 512 MB | 1 core | Agent OS |
-| **Total** | **~5.3 GB** | | Leaves ~2 GB for OS + Nextcloud AIO |
+| OpenFang (v0.5.x) | 512 MB | 1 core | Agent OS |
+| Nextcloud AIO family | host-shared | | Datadir on Samsung LUKS; Docker layers on `/data-bulk` |
+| **City compose subtotal** | **~5.3 GB caps** | | Headroom remains for AIO + OS on 16 GiB host |
 
 ## 3) SSH access
 
