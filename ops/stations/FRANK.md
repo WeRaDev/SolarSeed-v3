@@ -45,13 +45,20 @@ Related:
 | CPU | Intel Core i5-4440 @ 3.10GHz, 4 cores / 4 threads |
 | RAM | ~15.6 GiB (`MemTotal 16341208 kB`) |
 | Swap | ~5.1 GiB |
-| GPU (historical notes) | Intel iGPU + NVIDIA (nouveau); console GUI may use VGA |
+| GPU | NVIDIA GP107 [GeForce GTX 1050 Ti] (`10de:1c82`) |
 | OS | Debian GNU/Linux 13 (trixie), `DEBIAN_VERSION_FULL=13.5` |
 | Kernel | `6.12.95+deb13-amd64` |
 | Docker Engine | 29.6.1 |
 | Docker data-root | `/data-bulk/docker` |
 
 Power policy: sleep/suspend targets remain masked (server must not sleep). GDM has been failing (`gdm.service` failed at snapshot); core services do not depend on GUI.
+
+### 2.1 GPU runtime status (2026-08-11)
+
+- Proprietary NVIDIA driver active (`550.163.01`), verified with `nvidia-smi`.
+- `nouveau` is no longer the active runtime path for inference workloads.
+- NVIDIA Container Toolkit is installed; Docker GPU workloads run with `--gpus all`.
+- `col-llama-cpp` is configured with GPU device requests (`Capabilities: [["gpu"]]`).
 
 ---
 
@@ -145,7 +152,7 @@ Legacy NTFS on `sda1/2/5/6` remains idle reclaim candidates (not wiped).
 |----------|--------------|----------------------|-------|
 | Fortress | Nextcloud AIO family | Apache `127.0.0.1:11000`; AIO admin `127.0.0.1:8080`; Talk `0.0.0.0:3478` | NC 33.0.7.1; datadir on Samsung LUKS |
 | Library | `col-prometheus`, `col-alertmanager`, `col-cadvisor`, `col-node-exporter` | Prom `0.0.0.0:9090`; AM `127.0.0.1:9093` | Scrapes include nextcloud-exporter |
-| University | `col-llama-cpp` | `0.0.0.0:8081` | OpenAI-compatible API |
+| University | `col-llama-cpp` | `0.0.0.0:8081` | OpenAI-compatible API; production model `Bonsai-4B-Q1_0.gguf`; runtime `--threads 4 --ctx-size 4096 --parallel 1`; GPU enabled |
 | House | `col-postgres` | internal | City DB |
 | Agency | `col-openfang` | `127.0.0.1:4200` | OpenFang ~0.5.1 |
 | Spirit | `col-spirit` | `0.0.0.0:9105` | Python Spirit; observation + approvals |

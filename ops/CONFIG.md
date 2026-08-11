@@ -20,12 +20,16 @@ IMPORTANT:
 - Kernel: `6.12.95+deb13-amd64`
 - CPU: Intel(R) Core(TM) i5-4440 CPU @ 3.10GHz
   - 4 vCPU (`Thread(s) per core: 1`, `Core(s) per socket: 4`, `Socket(s): 1`)
+- GPU:
+  - NVIDIA GeForce GTX 1050 Ti (`10de:1c82`)
+  - Active driver: NVIDIA proprietary `550.163.01` (`nvidia-smi` working)
 - Memory:
   - MemTotal: `16341208 kB` (~15.6 GiB)
   - Typical available with cache: ~10 GiB class when stack healthy
 - Swap: ~5.1 GiB
 - Docker Engine: `29.6.1`
 - Docker data-root: `/data-bulk/docker`
+- Docker accelerator runtime: NVIDIA Container Toolkit configured; GPU containers available with `--gpus all`.
 
 ## 3) Storage layout (live 2026-08-11)
 Prefer disk **by-id** (sdX letters can swap):
@@ -59,6 +63,7 @@ Snapshot free space (2026-08-11): `/` ~38% used; `/data` ~5%; `/data-bulk` ~6%; 
 - Nextcloud datadir bind: host `/mnt/nextcloud-data` -> container `/mnt/ncdata`
 - Mastercontainer env includes: `NEXTCLOUD_DATADIR=/mnt/nextcloud-data`, `APACHE_IP_BINDING=127.0.0.1`, `APACHE_PORT=11000`, `AIO_LOG_LEVEL=warn`
 - OpenFang API: healthy (~0.5.1)
+- llama.cpp production profile: `Bonsai-4B-Q1_0.gguf`, `--threads 4`, `--ctx-size 4096`, `--parallel 1`, GPU device request enabled (`Capabilities: [["gpu"]]`)
 - Gitea: present on loopback; health may flap after restarts
 - Odoo: **not running** at snapshot (tailnet serve still maps `:443` -> `127.0.0.1:8069`)
 - Poly-Robot: **not running** at snapshot

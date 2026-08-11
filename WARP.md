@@ -37,7 +37,7 @@ The Kabbalistic Tree of Life is Spirit's **internal cognitive language** -- not 
 Reference: `ops/stations/FRANK.md` (full) and `ops/CONFIG.md` (compact). Key facts for agent context (2026-08-11):
 
 - **Station name**: Frank
-- **Hardware**: Intel i5-4440 (4 cores), ~16 GB RAM, dual HDD (ST1000 system + Samsung NC data)
+- **Hardware**: Intel i5-4440 (4 cores), ~16 GB RAM, NVIDIA GeForce GTX 1050 Ti, dual HDD (ST1000 system + Samsung NC data)
 - **OS**: Debian 13.5 (Trixie), kernel `6.12.95+deb13-amd64`
 - **Network**: LAN 192.168.1.71; Tailscale `100.82.194.96` / `wera-ss-pt-sn-1.tailfb390c.ts.net`
 - **Storage** (prefer by-id; sdX can swap):
@@ -46,6 +46,7 @@ Reference: `ops/stations/FRANK.md` (full) and `ops/CONFIG.md` (compact). Key fac
   - `/data-bulk` LUKS `data_bulk` (ST1000 former Data1) -- Docker data-root `/data-bulk/docker`
   - `/mnt/nextcloud-data` LUKS `nextcloud_data` (Samsung full disk) -- AIO datadir
 - **Power**: Unlimited (grid) at TRL4. Solar constraints apply at TRL5+.
+- **GPU runtime state (2026-08-11)**: proprietary NVIDIA driver `550.163.01` active (`nvidia-smi` verified); Docker NVIDIA toolkit configured; llama-cpp runs with GPU device requests.
 
 ### Runtime snapshot (as of 2026-08-11)
 
@@ -92,7 +93,7 @@ Compose memory limits for City services remain conservative; host has ~16 GiB RA
 
 | Service | Memory Limit | CPU Limit | Notes |
 |---------|-------------|-----------|-------|
-| llama-cpp | 3 GB | 4 cores | Qwen 3B Q4_K_M, ctx 32768, Q8_0 KV, ~3.3 GB |
+| llama-cpp | 3 GB | 4 cores | Bonsai 4B Q1_0, ctx 4096, `--parallel 1`, GPU-enabled (`gpus: all`) |
 | Spirit (Python) | 256 MB | 0.5 cores | Heartbeat every 5 min, LLM reflection |
 | Prometheus | 512 MB | 0.5 cores | 30d retention, 5GB size limit |
 | PostgreSQL | 512 MB | 0.5 cores | Spirit memory + resource ledger |
@@ -249,12 +250,12 @@ For each agent:
 
 ## 7) LLM (University building)
 
-TRL4 uses llama.cpp server with Qwen 3.4B Q4_K_M (2 GB GGUF).
+TRL4 uses llama.cpp server with Prism `Bonsai-4B-Q1_0.gguf` as the production model.
 
 - Endpoint: `http://llama-cpp:8081/v1/chat/completions` (OpenAI-compatible)
 - Health: `http://llama-cpp:8081/health`
-- Config: 4 threads, **ctx 32768**, Q8_0 KV cache, flash-attn, mlock, no-mmap, parallel 1, ~3.3 GB RAM
-- Model file: `/data/models/default.gguf`
+- Config: 4 threads, **ctx 4096**, parallel 1, GPU device request enabled (`gpus: all`)
+- Model file: `/data/models/Bonsai-4B-Q1_0.gguf`
 
 The canonical LLM interface is the **OpenAI-compatible API** (`/v1/chat/completions`). Both llama.cpp and Ollama implement it. Spirit and all agents must target this endpoint only -- never use provider-specific APIs.
 
