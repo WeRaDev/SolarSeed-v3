@@ -1,0 +1,9 @@
+https://wera-ss-pt-sn-1.tailfb390c.ts.net:4200 (tailnet only)
+|-- / proxy http://127.0.0.1:4200
+
+https://wera-ss-pt-sn-1.tailfb390c.ts.net (tailnet only)
+|-- / proxy http://127.0.0.1:8069
+
+https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443 (tailnet only)
+|-- / proxy http://127.0.0.1:11000
+

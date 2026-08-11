@@ -248,7 +248,7 @@ services:
       SPIRIT_LLM_ENABLED: ${SPIRIT_LLM_ENABLED:-false}
       SPIRIT_LLM_TIMEOUT: ${SPIRIT_LLM_TIMEOUT:-60}
       SPIRIT_LLM_MAX_TOKENS: ${SPIRIT_LLM_MAX_TOKENS:-512}
-      SPIRIT_HTTP_PROBES: ${SPIRIT_HTTP_PROBES:-nextcloud=http://filantropia-nextcloud:80}
+      SPIRIT_HTTP_PROBES: ${SPIRIT_HTTP_PROBES:-nextcloud=http://filantropia-nextcloud:80,ml=http://filantropia-ml:8501/health}
     volumes:
       - spirit_memory:/app/memory
       - spirit_logs:/app/logs

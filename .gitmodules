@@ -1,0 +1,8 @@
+[submodule "upstream/odoo"]
+	path = upstream/odoo
+	url = https://github.com/odoo/odoo.git
+	branch = 19.0
+[submodule "upstream/odoo-documentation"]
+	path = upstream/odoo-documentation
+	url = https://github.com/odoo/documentation.git
+	branch = 19.0

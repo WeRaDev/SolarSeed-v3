@@ -1,9 +1,10 @@
 # WARP.md -- City of Light TRL4 (Lab Deployment)
-Repository scope notice (post-reorganization): this repository is now product/TRL machine operations focused. Framework runtime implementation moved to `CityLight`; global/public UX moved to `SolarState`.
 
-Purpose: Operational guide for Warp Agent Mode to develop, deploy, and operate the City of Light on the TRL4 lab machine (wera-ss-pt-sn-1). This file bridges the deployed v3.1 reality with the v5 architectural specification.
+Purpose: Operational guide for Warp Agent Mode to develop, deploy, and operate the City of Light on the TRL4 lab machine (wera-ss-pt-sn-1), station callsign **Frank**. This file bridges the deployed v3.1 reality with the v5 architectural specification.
 
 Stage: **TRL4** -- Lab validation with unlimited energy. After TRL4 success, repeat in field with limited solar power (TRL5+).
+
+Live station state (storage, ports, health): `ops/stations/FRANK.md` and `ops/CONFIG.md`.
 
 ---
 
@@ -31,32 +32,46 @@ The City of Light is a sovereign living host for natural and artificial agents, 
 
 The Kabbalistic Tree of Life is Spirit's **internal cognitive language** -- not the service topology. Agents and operators interact with the Seven Pillars.
 
-## 2) TRL4 lab machine (wera-ss-pt-sn-1)
+## 2) TRL4 lab machine Frank (wera-ss-pt-sn-1)
 
-Reference: ops/CONFIG.md for live values. Key facts for agent context:
+Reference: `ops/stations/FRANK.md` (full) and `ops/CONFIG.md` (compact). Key facts for agent context (2026-08-11):
 
-- **Hardware**: Intel i5-4430 (4 cores), 8 GB RAM class, 1TB HDD; Intel iGPU (i915) + NVIDIA GTX 750 (nouveau)
-- **OS**: Debian 13 (Trixie)
-- **Network**: LAN 192.168.1.71; Tailscale active
-- **Storage**:
-  - Root FS: ext4 on `/dev/sda7` (must be mounted `rw`)
-  - Separate LUKS volume may exist (e.g. `/dev/sda9`, TYPE=crypto_LUKS) and can be used for `/data` once `crypttab`/`fstab` are correct
+- **Station name**: Frank
+- **Hardware**: Intel i5-4440 (4 cores), ~16 GB RAM, NVIDIA GeForce GTX 1050 Ti, dual HDD (ST1000 system + Samsung NC data)
+- **OS**: Debian 13.5 (Trixie), kernel `6.12.95+deb13-amd64`
+- **Network**: LAN 192.168.1.71; Tailscale `100.82.194.96` / `wera-ss-pt-sn-1.tailfb390c.ts.net`
+- **Storage** (prefer by-id; sdX can swap):
+  - `/` ext4 on ST1000 root partition (~93G) -- OS only
+  - `/data` LUKS `data_crypt` (ST1000) -- City configs/secrets
+  - `/data-bulk` LUKS `data_bulk` (ST1000 former Data1) -- Docker data-root `/data-bulk/docker`
+  - `/mnt/nextcloud-data` LUKS `nextcloud_data` (Samsung full disk) -- AIO datadir
 - **Power**: Unlimited (grid) at TRL4. Solar constraints apply at TRL5+.
+- **GPU runtime state (2026-08-11)**: proprietary NVIDIA driver `550.163.01` active (`nvidia-smi` verified); Docker NVIDIA toolkit configured; llama-cpp runs with GPU device requests.
 
-### Currently deployed and healthy (as of 2026-03-26)
+### Runtime snapshot (as of 2026-08-11)
 
-| Container | Image | Port | Status |
-|-----------|-------|------|--------|
-| col-spirit | city-spirit:latest (Python/FastAPI) | 9105 | Healthy, LLM reflection active |
-| col-llama-cpp | ghcr.io/ggml-org/llama.cpp:server | 8081 | Healthy, Qwen 3.4B Q4_K_M |
-| col-prometheus | prom/prometheus:v3.3.0 | 9090 | Healthy, 4 scrape targets UP |
-| col-postgres | postgres:16-bookworm | 5432 | Healthy |
-| col-alertmanager | prom/alertmanager:v0.28.1 | 9093 (localhost) | Running |
-| col-cadvisor | gcr.io/cadvisor/cadvisor:v0.52.1 | -- | Healthy |
-| col-node-exporter | prom/node-exporter:v1.9.0 | -- | Healthy |
-| col-redis | redis:7-alpine | 6379 (internal) | Healthy, AOF persistence |
-| col-openfang | city-openfang:v1 (OpenFang v0.5.2) | 4200 | Healthy, vllm provider connected to llama-cpp |
-| nextcloud-aio-mastercontainer | nextcloud/all-in-one:latest | 8080 | Healthy |
+- Docker data-root: `/data-bulk/docker` (Engine 29.6.1)
+- Running containers: ~25–26 (City + Nextcloud AIO)
+- Core healthy services:
+  - `col-openfang` (127.0.0.1:4200)
+  - `col-prometheus` (host publish 9090)
+  - `col-llama-cpp` (host publish 8081)
+  - `col-spirit` (host publish 9105)
+  - `col-gitea` (127.0.0.1:3000/2222; health may flap)
+  - Nextcloud AIO (`127.0.0.1:11000`, admin `127.0.0.1:8080`), NC **33.0.7.1**, datadir `/mnt/nextcloud-data`
+  - cityview UI + operator-gateway
+- Not running at snapshot: Odoo, Poly-Robot
+- Latest NC Borg archive: `20260811_013544-nextcloud-aio`
+
+### Console GUI and power management (2026-06-27)
+- Local desktop GUI is enabled: GDM runs the GNOME login screen on the attached console. The host boots to `graphical.target`; the greeter uses Xorg (`/etc/gdm3/daemon.conf` sets `WaylandEnable=false`).
+- Enablement was a registration repair, not a new install. GNOME/GDM and the desktop tasks were already present but `/etc/systemd/system/display-manager.service` was missing, so nothing started the login screen:
+  - `sudo ln -sfn /usr/lib/systemd/system/gdm.service /etc/systemd/system/display-manager.service`
+  - `sudo systemctl daemon-reload && sudo systemctl start display-manager.service`
+- This server must never sleep (Tailscale/SSH + Docker services). The auto-suspend that ships with the GUI is disabled two ways:
+  - systemd sleep masked: `sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target`
+  - GNOME idle-suspend/screen-blank off for `wera` and the `Debian-gdm` greeter (`sleep-inactive-ac-type`/`battery-type='nothing'`, `idle-delay=0`), persisted via `/etc/dconf/db/gdm.d/10-solarseed-nosleep` (run `dconf update`).
+- Power button left at defaults: a console press still powers off; a press inside a GUI session is a no-op while sleep is masked.
 
 ### Soul covenant
 - `soul.md` written at `/data/city-of-light/soul.md` with Four Computable Invariants
@@ -72,11 +87,13 @@ Reference: ops/CONFIG.md for live values. Key facts for agent context:
 | Caddy 2 | Gateway (reverse proxy) | LOW | Nextcloud AIO handles its own HTTPS |
 | RxInferServer.jl | Spirit Bayesian engine | FUTURE | Planned Spirit upgrade from Python |
 | DIDroom/Authentik | Customs (IAM) | HIGH | Identity management across all machines and containers. See implementation guide. |
-### Resource budget (8 GB class)
+### Resource budget (~16 GB class on Frank)
+
+Compose memory limits for City services remain conservative; host has ~16 GiB RAM.
 
 | Service | Memory Limit | CPU Limit | Notes |
 |---------|-------------|-----------|-------|
-| llama-cpp | 3 GB | 4 cores | Qwen 3B Q4_K_M, ctx 32768, Q8_0 KV, ~3.3 GB |
+| llama-cpp | 3 GB | 4 cores | Bonsai 4B Q1_0, ctx 4096, `--parallel 1`, GPU-enabled (`gpus: all`) |
 | Spirit (Python) | 256 MB | 0.5 cores | Heartbeat every 5 min, LLM reflection |
 | Prometheus | 512 MB | 0.5 cores | 30d retention, 5GB size limit |
 | PostgreSQL | 512 MB | 0.5 cores | Spirit memory + resource ledger |
@@ -84,8 +101,9 @@ Reference: ops/CONFIG.md for live values. Key facts for agent context:
 | cAdvisor | 128 MB | 0.5 cores | |
 | node-exporter | 64 MB | 0.1 cores | |
 | Redis | 256 MB | 0.25 cores | Event bus for agents |
-| OpenFang (v0.5.2) | 512 MB | 1 core | Agent OS |
-| **Total** | **~5.3 GB** | | Leaves ~2 GB for OS + Nextcloud AIO |
+| OpenFang (v0.5.x) | 512 MB | 1 core | Agent OS |
+| Nextcloud AIO family | host-shared | | Datadir on Samsung LUKS; Docker layers on `/data-bulk` |
+| **City compose subtotal** | **~5.3 GB caps** | | Headroom remains for AIO + OS on 16 GiB host |
 
 ## 3) SSH access
 
@@ -232,12 +250,12 @@ For each agent:
 
 ## 7) LLM (University building)
 
-TRL4 uses llama.cpp server with Qwen 3.4B Q4_K_M (2 GB GGUF).
+TRL4 uses llama.cpp server with Prism `Bonsai-4B-Q1_0.gguf` as the production model.
 
 - Endpoint: `http://llama-cpp:8081/v1/chat/completions` (OpenAI-compatible)
 - Health: `http://llama-cpp:8081/health`
-- Config: 4 threads, **ctx 32768**, Q8_0 KV cache, flash-attn, mlock, no-mmap, parallel 1, ~3.3 GB RAM
-- Model file: `/data/models/default.gguf`
+- Config: 4 threads, **ctx 4096**, parallel 1, GPU device request enabled (`gpus: all`)
+- Model file: `/data/models/Bonsai-4B-Q1_0.gguf`
 
 The canonical LLM interface is the **OpenAI-compatible API** (`/v1/chat/completions`). Both llama.cpp and Ollama implement it. Spirit and all agents must target this endpoint only -- never use provider-specific APIs.
 
@@ -282,6 +300,78 @@ When sudo is needed, use: `scp` file to `/tmp/`, then `ssh -t wera@192.168.1.71 
 - Always validate compose YAML before deploying.
 - Test one service at a time. Do not `docker compose up -d` the entire stack unless all services are proven.
 - When the LLM is involved, keep prompts short (256 tokens max) -- inference takes ~17s on this CPU.
+
+### TRL execution protocol (mandatory for development/configuration tasks)
+Goal: minimize risk and SSH churn by doing preparation locally and executing remote changes in a small number of long, purposeful SSH sessions.
+
+1. **Context + scope gate (local-only)**
+- Study project context and associated files first (`WARP.md`, `ops/CONFIG.md`, `ops/RUNBOOK.md`, relevant AGENTS/skills, and task-specific source-of-truth documents).
+- Define exact scope, affected components, acceptance criteria, and rollback boundaries.
+
+2. **Plan gate (local-only, before SSH)**
+- Create a detailed ordered plan before any TRL-changing command.
+- The plan must include: preflight checks, implementation steps, validation checks, rollback steps, and destructive/high-impact checkpoints requiring explicit user confirmation.
+- Do not open SSH for execution until this plan is complete.
+
+3. **Local build/test gate (local-only, before SSH)**
+- Build scripts/configs/content locally first.
+- Run local validation (syntax/lint/unit/smoke/dry-run checks as applicable) before transfer.
+- Prepare deployable artifacts so remote work is apply-and-verify, not ad-hoc authoring.
+
+4. **Batched SSH execution gate (remote)**
+- Open SSH only when local artifacts and plan are ready.
+- Execute in one session per logical scope whenever possible (example scopes: "Odoo partner pages", "compose service update", "monitoring config").
+- Run commands in ordered batches inside the same session: preflight -> apply -> restart/reload -> post-check.
+- Avoid one-command-per-connection loops. Reconnect only when switching major scope, waiting on approval, or after disruptive network/reboot events.
+
+5. **In-session verification + evidence gate (remote)**
+- Run all planned remote tests before leaving the session (HTTP probes, service health, module state, DB checks, etc.).
+- Collect concrete evidence for reporting (status codes, command outputs, key record IDs/paths).
+- If verification fails, fix or rollback in the same session when safe.
+
+6. **Report + clean exit gate**
+- Provide a concise completion report: what changed, what was verified, what remains, and any risks.
+- Explicitly exit SSH after the batch is complete.
+
+### SSH batching policy (anti-patterns to avoid)
+- Do not start remote execution before plan completion.
+- Do not use many short SSH sessions for closely related steps that can be safely grouped.
+- Do not mark tasks complete without remote validation evidence.
+- Do not perform destructive/high-impact actions without explicit confirmation at the planned checkpoint.
+
+### Odoo automation loop (mandatory for install/restore/configuration work)
+Goal: maximize automation and UX confidence while minimizing manual steps and rework.
+
+1. **Synchronize Gitea repositories (local-only, before execution)**
+- Clone or sync the target app repository and its documentation repository.
+- Create/refresh a working branch and record the exact commit hash that will be replayed on TRL.
+
+2. **Skill cross-validation gate (local-only)**
+- Cross-check active skills against project docs (`odoo-app/README.md`, `odoo-app/ODOO.AGENT.md`, `ops/RUNBOOK.md`, `WARP.md`).
+- Upgrade the skill set before runtime mutation: create missing skills and modify outdated skills.
+
+3. **Local container setup/config gate**
+- Validate compose/env first, then start the local container stack.
+- Install/configure app requirements in local container and enable monitoring hooks (logs, route probes, module-state checks).
+
+4. **Restore + test gate (local)**
+- Restore database and filestore from backup.
+- Run functional verification suite (auth, module states, queue states, key routes, website assets, CTA flow).
+- For Odoo shell writes that must persist, always execute `env.cr.commit()` before post-checks.
+
+5. **Learn + document + publish gate**
+- Analyze failures and corrective actions.
+- Update app documentation and operational guidance with new lessons.
+- Commit and push the remote branch before TRL replay.
+
+6. **TRL replay gate**
+- Connect to the related TRL machine and verify its Gitea checkout is updated to the same remote branch commit.
+- Repeat local steps 3 and 4 on TRL in one batched SSH session.
+- Ensure app availability through Tailscale when in scope.
+
+7. **Manual-test handoff gate**
+- Report evidence concisely (what changed, what was verified, what remains).
+- Await manual test results; if tests fail, restart loop from step 2.
 
 ### Key project files
 
@@ -363,3 +453,5 @@ When the agent fails or asks repeated questions:
 13. **Optimal LLM config for 8GB class**: `--ctx-size 32768 --cache-type-k q8_0 --cache-type-v q8_0 --flash-attn --mlock --no-mmap --threads 4`. Total RAM ~3.3 GB. Zero quality loss within 128K native training window. See "Optimal llama.cpp Context Window Configuration" research report.
 14. **Cityview is the mainframe interface**: All agent approvals flow through cityview Approval Quests. Future: multi-level approval system (Admin > internal agents > external agents > guests). Auto-approvals as mandates with time/quantity regulation via forkbomb.solutions.
 15. **Customs building (DIDroom/Authentik)**: Identity management across all machines and containers. Replaces per-service user registration. See "Nextcloud AIO + OpenFang + DIDroom/Authentik IAM" implementation guide.
+16. **Enable the console GUI by repairing the display-manager symlink, not reinstalling**: GNOME/GDM and `graphical.target` were already present, but `/etc/systemd/system/display-manager.service` was missing so nothing launched the login screen. Recreate the symlink to `/usr/lib/systemd/system/gdm.service`, `daemon-reload`, then `start display-manager.service` -- no desktop reinstall needed.
+17. **A GUI turns a server into a laptop -- disable sleep**: Enabling GDM activates `gsd-power`, which by default suspends the host after ~15 min idle on AC (`sleep-inactive-ac-type='suspend'`) at both the greeter and the user session. On a server this drops Tailscale/SSH and freezes Docker, and looks like a power-off. Mask the sleep targets and set GNOME `sleep-inactive-*-type='nothing'` + `idle-delay=0` for `wera` and `Debian-gdm`. Diagnose suspend vs poweroff with `journalctl ... 'The system will suspend now'` and `last -x` (suspends do not create new boots).

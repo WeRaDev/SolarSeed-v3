@@ -1,0 +1,5 @@
+cadvisor up cadvisor:8080
+nextcloud-exporter up nextcloud-aio-nextcloud-exporter:9205
+node-exporter up node-exporter:9100
+prometheus up localhost:9090
+spirit up spirit:9105

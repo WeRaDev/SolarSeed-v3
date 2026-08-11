@@ -32,20 +32,46 @@ jobs:
         id: compile
         continue-on-error: true
         run: |
-          if find . -name "*.py" -not -path "./.git/*" | grep -q .; then
-            python3 -m compileall -q . 2>&1 | tee /tmp/revisor_${GITHUB_RUN_ID}_compile.txt
+          mapfile -t PY_FILES < <(find . -name '*.py' \
+            -not -path './.git/*' \
+            -not -path './upstream/*' \
+            -not -path './.venv/*' \
+            -not -path './venv/*' \
+            -not -path '*/__pycache__/*' \
+            -not -path './node_modules/*')
+          if [ "${#PY_FILES[@]}" -gt 0 ]; then
+            python3 -m compileall -q "${PY_FILES[@]}" 2>&1 | tee /tmp/revisor_${GITHUB_RUN_ID}_compile.txt
             exit ${PIPESTATUS[0]}
           else
-            echo "No Python files found; skipping" | tee /tmp/revisor_${GITHUB_RUN_ID}_compile.txt
+            echo "No project Python files found; skipping" | tee /tmp/revisor_${GITHUB_RUN_ID}_compile.txt
           fi
 
       - name: Docker Compose config check
         id: docker
         continue-on-error: true
         run: |
-          if ls docker-compose*.yml 2>/dev/null | grep -q .; then
-            docker compose config --quiet 2>&1 | tee /tmp/revisor_${GITHUB_RUN_ID}_docker.txt
-            exit ${PIPESTATUS[0]}
+          COMPOSE_FILE=""
+          CREATED_ENV=0
+          if [ -f compose/docker-compose.yml ]; then
+            COMPOSE_FILE=compose/docker-compose.yml
+          elif ls docker-compose*.yml 2>/dev/null | grep -q .; then
+            COMPOSE_FILE=$(ls docker-compose*.yml | head -n 1)
+          fi
+          if [ -n "$COMPOSE_FILE" ]; then
+            if [ "$COMPOSE_FILE" = "compose/docker-compose.yml" ] && [ ! -f compose/.env ]; then
+              cat > compose/.env <<'EOF'
+POSTGRES_PASSWORD=revisor-placeholder
+RUNDECK_ADMIN_PASSWORD=revisor-placeholder
+GITEA_DB_PASSWORD=revisor-placeholder
+EOF
+              CREATED_ENV=1
+            fi
+            docker compose -f "$COMPOSE_FILE" config --quiet 2>&1 | tee /tmp/revisor_${GITHUB_RUN_ID}_docker.txt
+            STATUS=${PIPESTATUS[0]}
+            if [ "$CREATED_ENV" -eq 1 ]; then
+              rm -f compose/.env
+            fi
+            exit "$STATUS"
           else
             echo "No docker-compose.yml found; skipping" | tee /tmp/revisor_${GITHUB_RUN_ID}_docker.txt
           fi
@@ -60,7 +86,7 @@ jobs:
           BASELINE_RESULT: ${{ steps.baseline.outcome }}
           COMPILE_RESULT: ${{ steps.compile.outcome }}
           DOCKER_RESULT: ${{ steps.docker.outcome }}
-          RUN_URL: http://host.docker.internal:3000/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           REVISOR_PREFIX: /tmp/revisor_${{ github.run_id }}
         run: |
           python3 - <<'PY'

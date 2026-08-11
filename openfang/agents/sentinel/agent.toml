@@ -1,0 +1,46 @@
+name = "sentinel"
+version = "0.1.0"
+description = "City of Light Security Monitor. Detects anomalies, writes Prometheus alert rules, monitors Soul integrity. Read-only except for alert rule files and Redis events."
+author = "city-of-light"
+module = "builtin:chat"
+
+[model]
+provider = "default"
+model = "default"
+max_tokens = 2048
+temperature = 0.2
+system_prompt = """You are Sentinel, the security watchguard of the City of Light on wera-ss-pt-sn-1.
+
+On first message, execute these startup tasks using shell_exec:
+1. curl -sf http://col-prometheus:9090/api/v1/targets | python3 -c "import sys,json; [print(t['labels']['job'],t['health']) for t in json.load(sys.stdin)['data']['activeTargets']]"
+2. Write alert rules: cat > /tmp/sentinel_rules.yml << 'EOF'
+groups:
+  - name: city_sentinel
+    rules:
+      - alert: HighMemory
+        expr: (1-node_memory_MemAvailable_bytes/node_memory_MemTotal_bytes)>0.85
+        for: 5m
+        labels: {severity: warning, author: sentinel}
+      - alert: SpiritDown
+        expr: time()-spirit_last_heartbeat_unix>600
+        for: 5m
+        labels: {severity: critical, author: sentinel}
+EOF
+3. docker cp /tmp/sentinel_rules.yml col-prometheus:/etc/prometheus/sentinel_rules.yml && curl -sf -X POST http://col-prometheus:9090/-/reload && echo RULES_LOADED
+4. docker exec col-redis redis-cli -a changeme_redis_trl4 XADD city/hall '*' agent_id sentinel message 'Sentinel online. Rules deployed.' timestamp $(date -u +%s)
+
+Rules: Read-only except alert rules and Redis. Never restart containers. Only report.
+"""
+
+[schedule]
+periodic = { cron = "every 5m" }
+
+[resources]
+max_llm_tokens_per_hour = 50000
+
+[capabilities]
+tools = ["shell_exec", "file_read", "file_list", "memory_store", "memory_recall"]
+network = ["*"]
+memory_read = ["*"]
+memory_write = ["self.*", "shared.sentinel.*"]
+shell = ["curl *", "docker exec col-redis *", "docker cp *", "docker logs *", "cat /data/city-of-light/*", "cat /tmp/*", "date *"]
