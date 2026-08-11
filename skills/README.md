@@ -1,16 +1,35 @@
-# Odoo skill set
-This directory contains reusable Odoo-focused skills for the SolarSeed TRL4 workflow.
+# SolarSeed-v3 Skills
 
-## Skills
-- `odoo-trl4-restore-operations`: Deploy, restore, validate, and safely expose Odoo 19 on the TRL4 host.
-- `odoo-admin-app-governance`: Handle admin authentication checks, user/admin role verification, and module-state audits.
-- `odoo-custom-module-dev`: Build and update Odoo 19 modules with manifest, security, and upgrade/test workflow.
-- `odoo-runtime-troubleshooting`: Triage Odoo runtime failures (restore drift, access denied, module load errors, filestore issues).
+This directory contains project-local skills and the project skills registry.
 
-## Usage note
-These skills are tuned for the repository's current restore profile:
+## Inheritance model
+- Umbrella skills may be defined at the WeRa Global skills root.
+- Local registry `skills/registry.yaml` (when present) references umbrella skills and may add project-specific extensions.
+- Local overrides must not weaken umbrella quality or security guardrails.
+
+## Recommended default flow
+1. `repo-orientation`
+2. `task-intake`
+3. `implementation-plan` (for non-trivial changes)
+4. `quality-gate`
+5. `release-readiness`
+6. `retro-capture`
+
+## Project-specific skills
+- `trl-machine-change`: safety-first procedure for TRL machine configuration changes (when present).
+
+## Odoo skill set (TRL4)
+Reusable Odoo-focused skills for the SolarSeed TRL4 workflow:
+- `odoo-trl4-restore-operations`
+- `odoo-admin-app-governance`
+- `odoo-custom-module-dev`
+- `odoo-runtime-troubleshooting`
+- `odoo-e2e-automation-loop` (when present)
+- `odoo-trl5-setup` (when present)
+
+### Usage note
+These skills are tuned for the repository restore profile:
 - Odoo image `odoo:19.0`
-- PostgreSQL `pgvector/pgvector:pg16`
-- DB `wera`
 - Compose path `odoo-app/docker-compose.yml`
-- Env file `odoo-app/.env` (or host mirror `~/odoo-app/.env` on TRL4)
+- Env file `odoo-app/.env` (or host mirror on TRL)
+- Station Frank docs: `ops/stations/FRANK.md`

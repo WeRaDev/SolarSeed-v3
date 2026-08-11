@@ -15,7 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          github-server-url: http://127.0.0.1:3000
+          github-server-url: http://host.docker.internal:3000
 
       - name: Baseline documentation check
         id: baseline
@@ -32,19 +32,32 @@ jobs:
         id: compile
         continue-on-error: true
         run: |
-          if find . -name "*.py" -not -path "./.git/*" | grep -q .; then
-            python3 -m compileall -q . 2>&1 | tee /tmp/revisor_${GITHUB_RUN_ID}_compile.txt
+          mapfile -t PY_FILES < <(find . -name '*.py' \
+            -not -path './.git/*' \
+            -not -path './upstream/*' \
+            -not -path './.venv/*' \
+            -not -path './venv/*' \
+            -not -path '*/__pycache__/*' \
+            -not -path './node_modules/*')
+          if [ "${#PY_FILES[@]}" -gt 0 ]; then
+            python3 -m compileall -q "${PY_FILES[@]}" 2>&1 | tee /tmp/revisor_${GITHUB_RUN_ID}_compile.txt
             exit ${PIPESTATUS[0]}
           else
-            echo "No Python files found; skipping" | tee /tmp/revisor_${GITHUB_RUN_ID}_compile.txt
+            echo "No project Python files found; skipping" | tee /tmp/revisor_${GITHUB_RUN_ID}_compile.txt
           fi
 
       - name: Docker Compose config check
         id: docker
         continue-on-error: true
         run: |
-          if ls docker-compose*.yml 2>/dev/null | grep -q .; then
-            docker compose config --quiet 2>&1 | tee /tmp/revisor_${GITHUB_RUN_ID}_docker.txt
+          COMPOSE_FILE=""
+          if [ -f compose/docker-compose.yml ]; then
+            COMPOSE_FILE=compose/docker-compose.yml
+          elif ls docker-compose*.yml 2>/dev/null | grep -q .; then
+            COMPOSE_FILE=$(ls docker-compose*.yml | head -n 1)
+          fi
+          if [ -n "$COMPOSE_FILE" ]; then
+            docker compose -f "$COMPOSE_FILE" config --quiet 2>&1 | tee /tmp/revisor_${GITHUB_RUN_ID}_docker.txt
             exit ${PIPESTATUS[0]}
           else
             echo "No docker-compose.yml found; skipping" | tee /tmp/revisor_${GITHUB_RUN_ID}_docker.txt
@@ -54,7 +67,7 @@ jobs:
         if: always()
         env:
           WERA_GITEA_TOKEN: ${{ secrets.WERA_GITEA_TOKEN }}
-          GITEA_URL: http://127.0.0.1:3000
+          GITEA_URL: http://host.docker.internal:3000
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.number }}
           BASELINE_RESULT: ${{ steps.baseline.outcome }}

@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          github-server-url: http://host.docker.internal:3000
       - name: Validate baseline files
         run: |
           test -f README.md
@@ -19,5 +21,20 @@ jobs:
       - name: Quick repository sanity
         run: |
           if [ -f pyproject.toml ] || [ -f requirements.txt ]; then
-            python3 -m compileall -q .
+            python3 - <<'PY'
+import py_compile
+from pathlib import Path
+failed=False
+skip_parts={'.git','upstream','.venv','venv','__pycache__','node_modules'}
+for p in Path('.').rglob('*.py'):
+    if any(part in skip_parts for part in p.parts):
+        continue
+    try:
+        py_compile.compile(str(p), doraise=True)
+    except Exception as e:
+        failed=True
+        print(p, e)
+if failed:
+    raise SystemExit(1)
+PY
           fi
