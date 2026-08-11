@@ -23,6 +23,7 @@ IMPORTANT:
 - GPU:
   - NVIDIA GeForce GTX 1050 Ti (`10de:1c82`)
   - Active driver: NVIDIA proprietary `550.163.01` (`nvidia-smi` working)
+  - VRAM (live snapshot): total `4096 MiB`, used `0 MiB`, free `4032 MiB`
 - Memory:
   - MemTotal: `16341208 kB` (~15.6 GiB)
   - Typical available with cache: ~10 GiB class when stack healthy

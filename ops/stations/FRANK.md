@@ -59,6 +59,7 @@ Power policy: sleep/suspend targets remain masked (server must not sleep). GDM h
 - `nouveau` is no longer the active runtime path for inference workloads.
 - NVIDIA Container Toolkit is installed; Docker GPU workloads run with `--gpus all`.
 - `col-llama-cpp` is configured with GPU device requests (`Capabilities: [["gpu"]]`).
+- VRAM snapshot (`nvidia-smi`): total `4096 MiB`, used `0 MiB`, free `4032 MiB`.
 
 ---
 

@@ -46,7 +46,7 @@ Reference: `ops/stations/FRANK.md` (full) and `ops/CONFIG.md` (compact). Key fac
   - `/data-bulk` LUKS `data_bulk` (ST1000 former Data1) -- Docker data-root `/data-bulk/docker`
   - `/mnt/nextcloud-data` LUKS `nextcloud_data` (Samsung full disk) -- AIO datadir
 - **Power**: Unlimited (grid) at TRL4. Solar constraints apply at TRL5+.
-- **GPU runtime state (2026-08-11)**: proprietary NVIDIA driver `550.163.01` active (`nvidia-smi` verified); Docker NVIDIA toolkit configured; llama-cpp runs with GPU device requests.
+- **GPU runtime state (2026-08-11)**: proprietary NVIDIA driver `550.163.01` active (`nvidia-smi` verified); Docker NVIDIA toolkit configured; llama-cpp runs with GPU device requests; VRAM snapshot: total `4096 MiB`, used `0 MiB`, free `4032 MiB`.
 
 ### Runtime snapshot (as of 2026-08-11)
 
