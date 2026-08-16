@@ -116,9 +116,14 @@ curl -s -X POST http://localhost:4200/api/agents \
   - retry with explicit key: `ssh -i ~/.ssh/id_ed25519 wera-admin@wera-ss-pt-tv-1.tailfb390c.ts.net`
 
 ## TRL5 outbound email (Nextcloud + Odoo via Proton Bridge)
-Status (2026-08-16): host proxy + NC/Odoo SMTP wiring are deployed. **Delivery requires Bridge account login** (interactive Proton password + 2FA). Account observed as `Tomás Crespim` index `0`, often `signed out` after Bridge restart.
+Status (2026-08-16, **verified working**):
+- Host SMTP proxy + NC/Odoo SMTP wiring deployed and enabled
+- NC Admin email test: OK
+- Odoo outgoing Test Connection: OK
+- Odoo user invitation delivery: OK (after bounce/return-path + alias-domain fixes)
+- Bridge account index `0` (`Tomás Crespim` / mailbox `cloud@wera.global`) must stay **connected** (re-login with Proton password + 2FA after some Bridge restarts)
 
-Scope: transactional notifications only (NC password reset / shares, Odoo chatter). Not bulk marketing.
+Scope: transactional notifications only (NC password reset / shares, Odoo invitations/chatter). Not bulk marketing.
 
 ### Architecture
 ```
@@ -238,17 +243,29 @@ Required records (already applied on TRL5 2026-08-16):
 - ICPs: `mail.default.from=cloud`, `mail.catchall.domain=wera.global`, bounce/catchall aliases `cloud`
 - Verify: Odoo shell send to `cloud@wera.global` ends `mail.state=sent`; Bridge must be `connected`
 
-### Current wired defaults (no secrets)
-| App | Host | Port | Encryption | Notes |
-|-----|------|------|------------|-------|
-| Nextcloud AIO | `172.18.0.1` | 1025 | `tls` + streamoptions | auth on |
-| Odoo `filantropia_public` | `172.18.0.1` | 1025 | `starttls` / `login` | server name `Proton Bridge (host via docker gw)` |
+### Final verified configuration (2026-08-16, no secrets)
+Host:
+- Units active+enabled: `protonmail.service`, `protonmail-smtp-docker-proxy.service`
+- Listen: `127.0.0.1:1025` / `1143` (Bridge); `172.18.0.1:1025` + `172.19.0.1:1025` (proxy)
+- Bridge mailbox / SMTP user: `cloud@wera.global`
+
+| App | Host | Port | Encryption | From / notes |
+|-----|------|------|------------|--------------|
+| Nextcloud AIO | `172.18.0.1` | 1025 | `tls` + streamoptions (self-signed allow) | `cloud@wera.global`; auth on |
+| Odoo `filantropia_public` | `172.18.0.1` | 1025 | `starttls` / `login` | server `Proton Bridge (host via docker gw)`; `from_filter=wera.global` |
+
+Odoo identity (required for invitations):
+- Company: `Filantropia Solar` / `cloud@wera.global` / `alias_domain_id` -> `wera.global`
+- `mail.alias.domain`: `default_from=bounce=catchall=cloud` (must be mailbox-compatible for Bridge return-path)
+- ICPs: `mail.default.from=cloud`, `mail.catchall.domain=wera.global`, bounce/catchall aliases `cloud`
+- Partners: OdooBot + Administrator emails `cloud@wera.global`
 
 ### Failure symptoms
 - Connection refused to `172.18.0.1:1025` -> proxy down or Docker bridge gateway IP changed
-- SMTP `454` / auth errors while ports listen -> Bridge password stale **or** `list` shows `signed out`
-- `554` account not available in Bridge -> account not connected
-- NC `send()` returns recipient address(es) -> failure (often auth/TLS/from-domain)
+- SMTP `454` / auth errors while ports listen -> Bridge password stale **or** `list` shows `signed out`/`locked`
+- `554` + Bridge log `invalid return path` -> bounce/catchall alias is not the Bridge mailbox (use `cloud@wera.global`, not `bounce@`)
+- `554` account not available / sender invalid with `odoobot@example.com` -> fix OdooBot/admin partner emails
+- NC `send()` returns recipient address(es) -> failure (empty array = success)
 - After reboot: both units active, but account may still need `login 0` again if session tokens expired
 - Bridge CLI warning `dbus-launch` missing is non-fatal when keychain helper is `pass`
 

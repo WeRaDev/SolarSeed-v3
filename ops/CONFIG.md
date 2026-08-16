@@ -72,18 +72,20 @@ IMPORTANT:
   - `nextcloud-aio-vaultwarden` previously observed stopped long-term (not part of LocalAI path)
   - AIO mastercontainer upgrade can drop the in-container `local-ai.json` HEALTHCHECK patch; re-check after upgrades
 
-## 9) Outbound email / Proton Bridge (wired 2026-08-16)
+## 9) Outbound email / Proton Bridge (verified 2026-08-16)
 - Purpose: transactional SMTP for Nextcloud AIO + Odoo (`filantropia-odoo`)
+- Verified: NC email test OK; Odoo Test Connection OK; Odoo user invitation OK
 - Bridge: host user `protonmail`, systemd `protonmail.service` -> tmux session `protonmail`
+- Bridge mailbox / SMTP auth user: `cloud@wera.global`
 - Bridge listen: `127.0.0.1:1025` (SMTP STARTTLS), `127.0.0.1:1143` (IMAP)
 - Docker proxy: `protonmail-smtp-docker-proxy.service` (`/usr/local/sbin/protonmail-smtp-docker-proxy.sh`)
   - Binds `172.18.0.1:1025` and `172.19.0.1:1025` only (not public / Tailscale)
 - App SMTP target: `172.18.0.1:1025`
-  - Nextcloud: `mail_smtpsecure=tls` + self-signed streamoptions
-  - Odoo outgoing server name: `Proton Bridge (host via docker gw)` (`starttls` / `login`)
-- From identity in use: `cloud@wera.global` (must be allowed send-as on Proton account)
+  - Nextcloud: `mail_smtpsecure=tls` + self-signed streamoptions; from `cloud@wera.global`
+  - Odoo outgoing server: `Proton Bridge (host via docker gw)` (`starttls` / `login`, `from_filter=wera.global`)
+- Odoo identity: company + OdooBot + Administrator use `cloud@wera.global`; alias domain `wera.global` with bounce/catchall/default_from all `cloud` (Bridge rejects non-mailbox return-paths)
 - Secrets: never in Git; optional host file `/root/.secrets/proton-bridge-smtp.env` (mode 600) after Bridge `info 0`
-- Operator dependency: Bridge account index `0` (`Tomás Crespim`) must be **connected** (`login 0` + 2FA). Signed-out Bridge rejects AUTH with SMTP `454`
+- Operator dependency: Bridge account index `0` (`Tomás Crespim`) must be **connected** (`login 0` + 2FA). Signed-out/locked Bridge rejects AUTH (`454`) or send
 - Runbook: `ops/RUNBOOK.md` "TRL5 outbound email (Nextcloud + Odoo via Proton Bridge)"
-- Filantropia pointer: `../FilantropiaSolar/docs/ops/TRL5-NC-ACCESS.md` (or repo-local FilantropiaSolar docs path)
+- Filantropia pointer: FilantropiaSolar `docs/ops/TRL5-NC-ACCESS.md`
 
