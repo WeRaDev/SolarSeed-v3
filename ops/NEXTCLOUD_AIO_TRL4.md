@@ -224,7 +224,73 @@ Users provisioned: `admin`, `Chris`, `FilantropiaSolar`, `mr.mike`, `nash`, `eri
 Groups: `FilantropiaSolarAdmin`, `admin`.
 Passwords at `/data/.secrets/nc-user-passwords/` on TRL4 host.
 
-## Remaining follow-ups
-- **Trigger Borg backup** via AIO web UI (stop Apache, open `https://127.0.0.1:8080`, authenticate, run backup, restart Apache).
-- **Create "City of Light Ops" Talk room** via NC web UI (CLI `talk:room:create` hangs in spreed 23 / NC 33).
-- Optional: full-text search (Elasticsearch/OpenSearch) -- defer until RAM headroom confirmed.
+## Verification results (2026-08-18)
+Full functional check passed. Evidence:
+
+| Check | Result |
+|-------|--------|
+| `status.php` (loopback) | `installed: true`, `maintenance: false`, `needsDbUpgrade: false`, v33.0.7.1 |
+| `status.php` (tailnet `:8443`) | same |
+| All AIO containers | healthy (13/13) incl. ClamAV |
+| `filantropia_solar` 3.2.31 | enabled |
+| `integration_openai` 4.5.2 | enabled; url=`http://col-llama-cpp:8081`; model=`Bonsai-4B-Q1_0` |
+| `assistant` 3.5.0 | enabled |
+| `files_antivirus` 6.4.0 | enabled; daemon mode; host=`nextcloud-aio-clamav`; port=3310 |
+| `external` 8.0.1 | enabled |
+| LLM reachable from NC container | `{"status":"ok"}` |
+| ClamAV PING from NC container | `PONG` (clamd responding on port 3310) |
+| Prometheus targets | cadvisor, nextcloud-exporter, node-exporter, prometheus, spirit — all `up` |
+| Users | admin, Chris, FilantropiaSolar, eric@viso.space, mr.mike, nash |
+| Groups | FilantropiaSolarAdmin (FilantropiaSolar), admin (admin, mr.mike, nash) |
+| `filantropia_solar` endpoints | prometheus=`http://col-prometheus:9090`, spirit=`http://col-spirit:9105` |
+
+## Manual steps required
+Two items require browser access or a working TTY — they cannot be triggered reliably via CLI.
+
+### Step 1: Borg backup (REQUIRED before user data grows)
+`occ talk:room:create` hangs in NC 33 / spreed 23; use the web UI.
+
+1. SSH to Frank: `ssh wera@100.82.194.96`
+2. Stop Apache (required to unblock AIO admin panel):
+```bash
+docker stop nextcloud-aio-apache
+```
+3. Open the AIO admin panel in a browser on the **local network or via Tailscale**: `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8080` (or `https://192.168.1.71:8080` on LAN). Accept the self-signed cert.
+4. Log in with the AIO password:
+```bash
+# Read password (do not echo it; paste directly into browser)
+docker exec nextcloud-aio-mastercontainer python3 -c "import json; print(json.load(open('/mnt/docker-aio-config/data/configuration.json'))['password'])"
+```
+5. In the AIO panel: click **Create backup** / **Backup** button.
+6. Monitor progress — the `nextcloud-aio-borgbackup` container will appear and exit 0 on success. Check:
+```bash
+docker logs nextcloud-aio-borgbackup --tail=30
+```
+7. Restart Apache after backup completes:
+```bash
+docker start nextcloud-aio-apache
+```
+8. Verify NC is back:
+```bash
+curl -sk http://127.0.0.1:11000/status.php | python3 -m json.tool
+```
+9. Record the new archive name (shown in AIO panel or borgbackup logs) in `ops/NEXTCLOUD_AIO_TRL4.md` under "Last successful backup evidence".
+
+### Step 2: Create "City of Light Ops" Talk room
+1. Log in to NC as admin at `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443`
+2. Open the **Talk** app (left sidebar).
+3. Click **+** > **New group conversation** > name it `City of Light Ops`.
+4. Add members: `admin`, `mr.mike`, `nash`, `FilantropiaSolar`.
+5. After creation, note the room token (visible in the URL: `.../call/<token>`) and record it here.
+6. Optionally: promote `mr.mike` and `nash` to moderators.
+
+### Step 3: Optional — full-text search
+Requires ~2 GB additional RAM (Elasticsearch/OpenSearch). Current headroom: ~12 GB free.
+- Enable via AIO admin panel: toggle **Fulltextsearch** under "Optional containers".
+- Then install NC apps: `occ app:install fulltextsearch files_fulltextsearch fulltextsearch_elasticsearch`
+- Run initial index: `occ fulltextsearch:index`
+
+## Remaining follow-ups (post-verification)
+- Trigger Borg backup (Step 1 above).
+- Create Talk room (Step 2 above).
+- Optional: full-text search (Step 3 above).
