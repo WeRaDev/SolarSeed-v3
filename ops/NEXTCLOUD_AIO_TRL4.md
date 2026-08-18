@@ -294,6 +294,24 @@ Requires ~2 GB additional RAM (Elasticsearch/OpenSearch). Current headroom: ~12 
 - Create Talk room (Step 2 above).
 - Optional: full-text search (Step 3 above).
 
+## filantropia_solar deployment note
+When packaging from macOS with `tar`, resource fork files (`._*`) are included by default. These are silently extracted on Linux and NC tries to autoload them as PHP controller classes, causing a 500 on every page.
+
+**Symptom**: `ReflectionException: Class "OCA\FilantropiaSolar\Controller\._EnergyApiController" does not exist` in `nextcloud.log`; `/login` returns HTTP 500.
+
+**Fix (applied 2026-08-18)**:
+```bash
+# Remove existing dotfiles without full reinstall:
+docker exec nextcloud-aio-nextcloud find /var/www/html/custom_apps/filantropia_solar -name '._*' -delete
+docker exec -u www-data nextcloud-aio-nextcloud php occ maintenance:repair --include-expensive
+```
+**Prevention** — always set `COPYFILE_DISABLE=1` when creating the tarball on macOS:
+```bash
+COPYFILE_DISABLE=1 tar --exclude='node_modules' --exclude='.git' \
+  --exclude='._*' --exclude='.DS_Store' \
+  -czf filantropia_solar.tar.gz nextcloud-app
+```
+
 ## Final status snapshot (2026-08-18 ~13:20 UTC)
 - **Borg backup**: completed successfully at `13:18:37 UTC`.
   - Archive: `20260818_131837-nextcloud-aio` (estimated name from timestamp; AIO log confirmed `Backup finished successfully`).
