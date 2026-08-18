@@ -291,6 +291,17 @@ Requires ~2 GB additional RAM (Elasticsearch/OpenSearch). Current headroom: ~12 
 - Run initial index: `occ fulltextsearch:index`
 
 ## Remaining follow-ups (post-verification)
-- Trigger Borg backup (Step 1 above).
 - Create Talk room (Step 2 above).
 - Optional: full-text search (Step 3 above).
+
+## Final status snapshot (2026-08-18 ~13:20 UTC)
+- **Borg backup**: completed successfully at `13:18:37 UTC`.
+  - Archive: `20260818_131837-nextcloud-aio` (estimated name from timestamp; AIO log confirmed `Backup finished successfully`).
+  - Duration: 23 seconds. Repo at `/data/backups/borg`.
+  - Previous archives retained per prune policy (`--keep-within=7d --keep-weekly=4 --keep-monthly=6`).
+- **Office suite**: AIO panel session switched from Collabora to **EuroOffice** (`nextcloud-aio-eurooffice`, healthy). Collabora exited (70).
+- **All containers**: 14 running and healthy.
+- **NC**: `installed: true`, `maintenance: false`, `needsDbUpgrade: false`, v33.0.7.1.
+- **Apache**: loopback-only `127.0.0.1:11000`; tailnet `:8443` reachable.
+- **Tailnet serve**: `/` → Odoo :8069, `:8443` → NC :11000, `:4200` → OpenFang.
+- **Outstanding**: Talk room creation (web UI) and optional full-text search.
