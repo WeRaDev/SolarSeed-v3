@@ -32,10 +32,11 @@ Related:
 
 | URL | Backend |
 |-----|---------|
-| `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443/` | `http://127.0.0.1:11000` (Nextcloud Apache) |
+| `https://wera-ss-pt-sn-1.tailfb390c.ts.net/` | `http://localhost:11000` (Nextcloud -- canonical user URL) |
+| `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443/` | `http://127.0.0.1:11000` (Nextcloud -- alias) |
 | `https://wera-ss-pt-sn-1.tailfb390c.ts.net:4200/` | `http://127.0.0.1:4200` (OpenFang) |
 
-Note: the port 443 Odoo route was removed on 2026-08-18 (Odoo not running; was causing 502 on the root URL). Re-add when Odoo is brought back: `tailscale serve --bg 8069`.
+Note: NC's `overwrite.cli.url` = `https://wera-ss-pt-sn-1.tailfb390c.ts.net/` (port 443). The `:443` serve rule must always point to NC so internal redirects resolve correctly. When Odoo is needed, use a non-443 port (e.g. `tailscale serve --bg 8069` would need a different port mapping).
 
 ---
 
