@@ -32,9 +32,10 @@ Related:
 
 | URL | Backend |
 |-----|---------|
-| `https://wera-ss-pt-sn-1.tailfb390c.ts.net/` | `http://127.0.0.1:8069` (Odoo -- currently not running) |
 | `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443/` | `http://127.0.0.1:11000` (Nextcloud Apache) |
 | `https://wera-ss-pt-sn-1.tailfb390c.ts.net:4200/` | `http://127.0.0.1:4200` (OpenFang) |
+
+Note: the port 443 Odoo route was removed on 2026-08-18 (Odoo not running; was causing 502 on the root URL). Re-add when Odoo is brought back: `tailscale serve --bg 8069`.
 
 ---
 
