@@ -57,10 +57,20 @@ Expected values:
 - `apache_ip_binding`: `127.0.0.1`
 - `borg_backup_host_location`: `/data/backups`
 - `backup-mode`: `backup`
-- `isClamavEnabled`: `0`
+- `isClamavEnabled`: `1` (enabled 2026-08-18)
 - `isDockerSocketProxyEnabled`: `1`
 - `aio_community_containers`: `fail2ban nextcloud-exporter`
-ClamAV is intentionally disabled on TRL4 until the AIO child-container log-level propagation issue is resolved.
+
+**ClamAV note (2026-08-18):** AIO sets `isClamavEnabled=1` in config but does not pass `MAX_SIZE` to the container, leaving `StreamMaxLength` empty and breaking `clamd`. Fix: manually recreate the container with the missing env var:
+```bash
+docker stop nextcloud-aio-clamav && docker rm nextcloud-aio-clamav
+docker run -d --name nextcloud-aio-clamav --network nextcloud-aio \
+  --restart unless-stopped \
+  -e AIO_LOG_LEVEL=warn -e TZ=Europe/Lisbon -e MAX_SIZE=16G \
+  -v nextcloud_aio_clamav:/var/lib/clamav \
+  nextcloud/aio-clamav:latest
+```
+The volume `nextcloud_aio_clamav` preserves downloaded virus databases across recreations.
 ## Expected container status
 Core containers:
 - `nextcloud-aio-mastercontainer`: healthy
@@ -77,6 +87,7 @@ Enabled services:
 - `nextcloud-aio-collabora`: healthy
 - `nextcloud-aio-nextcloud-exporter`: running on `127.0.0.1:9205`
 - `nextcloud-aio-fail2ban`: running
+- `nextcloud-aio-clamav`: healthy (enabled 2026-08-18; `MAX_SIZE=16G`)
 Backup container:
 - `nextcloud-aio-borgbackup`: exits after backup; expected success state is `Exited (0)`.
 ## Health checks
@@ -200,6 +211,20 @@ The same runbook was published to the local Gitea wiki repository:
   - Verified target `up` in Prometheus.
 - Evidence saved to `ops/evidence/nextcloud_aio_refresh_20260725T000829Z/`.
 
+## Nextcloud app layer (2026-08-18)
+The following NC apps are installed and configured:
+- `filantropia_solar` 3.2.31 -- from FilantropiaSolar repo `custom_apps/`; configured with Prometheus + Spirit endpoints.
+- `integration_openai` 4.5.2 -- API URL `http://col-llama-cpp:8081` (Bonsai-4B-Q1_0 model via GPU).
+- `assistant` 3.5.0 -- enabled, backed by integration_openai.
+- `files_antivirus` 6.4.0 -- daemon mode, host `nextcloud-aio-clamav:3310`, delete on infection.
+- `external` 8.0.1 -- sidebar links: Spirit, Prometheus, Cityview.
+- LLM bridge: `col-llama-cpp` connected to `nextcloud-aio` network (persisted in host compose `nextcloud-aio:` entry on llama-cpp service).
+
+Users provisioned: `admin`, `Chris`, `FilantropiaSolar`, `mr.mike`, `nash`, `eric@viso.space`.
+Groups: `FilantropiaSolarAdmin`, `admin`.
+Passwords at `/data/.secrets/nc-user-passwords/` on TRL4 host.
+
 ## Remaining follow-ups
-- Sync the FilantropiaSolar `nextcloud-app` source onto TRL4 before installing the app.
-- Revisit ClamAV after the AIO log-level propagation issue is fixed upstream.
+- **Trigger Borg backup** via AIO web UI (stop Apache, open `https://127.0.0.1:8080`, authenticate, run backup, restart Apache).
+- **Create "City of Light Ops" Talk room** via NC web UI (CLI `talk:room:create` hangs in spreed 23 / NC 33).
+- Optional: full-text search (Elasticsearch/OpenSearch) -- defer until RAM headroom confirmed.

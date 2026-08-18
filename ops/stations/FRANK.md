@@ -173,6 +173,8 @@ Legacy NTFS on `sda1/2/5/6` remains idle reclaim candidates (not wiped).
 - ClamAV disabled
 - Borg repo: `/data/backups/borg`
 - Latest backup archive: `20260811_013544-nextcloud-aio` (2026-08-11); prior `20260717_000110-nextcloud-aio`
+- ClamAV: **enabled** (recreated with `MAX_SIZE=16G AIO_LOG_LEVEL=warn`; `StreamMaxLength 2000M`); healthy.
+- LLM bridge: `col-llama-cpp` attached to `nextcloud-aio` Docker network; NC container reaches it at `http://col-llama-cpp:8081`.
 
 ### Not running at snapshot (present historically / images may exist)
 
@@ -214,6 +216,23 @@ Uptime at sample: ~3h10m after recent Docker root move / service restarts.
 Spirit reported `pending_approvals: 5` at sample.
 
 ---
+
+## 6b) NC TRL5-alignment changes (2026-08-18)
+
+All changes applied against NC 33.0.7.1 (already running).
+
+1. **LLM bridge** -- `docker network connect nextcloud-aio col-llama-cpp`; persisted in host compose. NC container can reach `http://col-llama-cpp:8081/health`.
+2. **App installs** -- via `occ app:install`: `integration_openai` 4.5.2, `assistant` 3.5.0, `external` 8.0.1, `files_antivirus` 6.4.0. `filantropia_solar` 3.2.31 installed from FilantropiaSolar repo source into `custom_apps/`.
+3. **ClamAV** -- enabled (`isClamavEnabled=1` in AIO config). Existing container had empty `StreamMaxLength` (missing `MAX_SIZE` env). Fixed by recreating with `MAX_SIZE=16G AIO_LOG_LEVEL=warn TZ=Europe/Lisbon`; volume `nextcloud_aio_clamav` reused (databases preserved). Container healthy.
+4. **User provisioning** -- accounts created: `Chris` (Chris Ellis), `FilantropiaSolar` (Dan Sargent), `mr.mike` (Mike AF), `nash`, `eric@viso.space` (Eric). Passwords stored in `/data/.secrets/nc-user-passwords/`. Groups: `FilantropiaSolarAdmin` (member: FilantropiaSolar), `admin` (members: admin, mr.mike, nash).
+5. **System config** -- `default_phone_region=PT`; `allow_local_remote_servers=true` (was already set).
+6. **integration_openai config** -- API URL `http://col-llama-cpp:8081`; model `Bonsai-4B-Q1_0`; service name `Bonsai LLM (TRL4)`.
+7. **files_antivirus config** -- daemon mode; host `nextcloud-aio-clamav`; port `3310`; stream max 100 MB; action `delete`.
+8. **filantropia_solar config** -- Prometheus endpoint `http://col-prometheus:9090`; Spirit endpoint `http://col-spirit:9105`.
+9. **external app** -- sidebar quick-links: Spirit, Prometheus, Cityview (tailnet URLs).
+10. **Prometheus** -- `nextcloud-aio-nextcloud-exporter:9205` scraping already active (from 2026-07-25 session). `col-llama-cpp` now also on `nextcloud-aio` network.
+11. **Backup** -- pending manual trigger via AIO web UI (`https://127.0.0.1:8080` after stopping Apache). Last archive: `20260811_013544-nextcloud-aio`.
+12. **Talk room** -- "City of Light Ops" room creation skipped (CLI `talk:room:create` hangs in NC 33 / spreed 23; create via web UI).
 
 ## 6) Major changes recorded (2026-08-10/11)
 
@@ -264,13 +283,15 @@ ssh wera@wera-ss-pt-sn-1.tailfb390c.ts.net 'df -hT / /data /data-bulk /mnt/nextc
 
 ## 8) Open / next work
 
+- **Trigger Borg backup** via AIO web UI after user provisioning (stop Apache, open `https://127.0.0.1:8080`, authenticate, run backup, restart Apache).
+- **Create "City of Light Ops" Talk room** via NC web UI and register additional City agent bots.
 - Reclaim remaining idle NTFS (`sda2`, `sda5`, `sda6`) if more City capacity needed
 - Decide fate of old Docker backup tree and old NC volume after soak period
 - Repair or drop GDM if console GUI required
 - Stabilize Gitea health after restarts
 - Odoo: restart stack or clear stale tailnet `:443` serve if unused
-- Optional: Collabora stability; Grafana; Customs (Authentik/DIDroom)
-- Keep Spirit approvals queue triaged (5 pending at snapshot)
+- Optional: full-text search stack (Elasticsearch/OpenSearch), Collabora stability, Grafana, Authentik/DIDroom
+- Keep Spirit approvals queue triaged
 
 ---
 
