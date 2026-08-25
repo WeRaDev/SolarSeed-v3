@@ -2,6 +2,8 @@
 IMPORTANT:
 - Do not put secrets in Git.
 - Keep credentials only in `.secrets/` on host and/or password manager.
+- Station callsign: **ss-pt-tv-1** (hostname `wera-ss-pt-tv-1`).
+- Full technical specification: `ops/stations/ss-pt-tv-1.md`.
 ## 1) Host identity (TRL5 field machine)
 - Hostname: `wera-ss-pt-tv-1`
 - Tailscale FQDN: `wera-ss-pt-tv-1.tailfb390c.ts.net`
