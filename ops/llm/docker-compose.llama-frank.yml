@@ -1,0 +1,57 @@
+# Verified Frank (TRL4) University / NC Assistant LLM service.
+# Applied on host as part of /data/city-of-light/docker-compose.yml (llama-cpp service).
+# Image is host-built; rebuild with ops/bootstrap/build-llama-cuda-frank.sh
+#
+# Integration:
+# - networks: city-of-light (Spirit/OpenFang) + nextcloud-aio (NC integration_openai)
+# - NC URL: http://col-llama-cpp:8081
+# - OpenFang vllm: http://llama-cpp:8081/v1  (compose DNS name on city-of-light)
+# - Spirit: SPIRIT_LLM_ENDPOINT=http://llama-cpp:8081
+
+services:
+  llama-cpp:
+    image: local/llama.cpp:server-cuda-12.4.1-sm61
+    container_name: col-llama-cpp
+    gpus: all
+    restart: unless-stopped
+    ports:
+      # loopback-only host publish (NC uses Docker DNS, not this bind)
+      - "127.0.0.1:8081:8081"
+    volumes:
+      - /data/models:/models:ro
+    command:
+      - "-m"
+      - "/models/Bonsai-4B-Q1_0.gguf"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8081"
+      - "--threads"
+      - "4"
+      - "--ctx-size"
+      - "16384"
+      - "--parallel"
+      - "1"
+      - "-ngl"
+      - "999"
+    networks:
+      city-of-light:
+      nextcloud-aio:
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/health || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+networks:
+  city-of-light:
+    external: true
+  nextcloud-aio:
+    external: true

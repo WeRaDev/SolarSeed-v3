@@ -5,16 +5,17 @@ TRL5 reference host: `wera-ss-pt-tv-1.tailfb390c.ts.net`.
 TRL4 target host: `wera-ss-pt-sn-1.tailfb390c.ts.net` (station Frank).
 Station document: `ops/stations/FRANK.md`.
 ## Current access profile
-- Nextcloud tailnet URL: `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443`
+- Nextcloud tailnet URL (canonical): `https://wera-ss-pt-sn-1.tailfb390c.ts.net/` (port 443)
+- Nextcloud tailnet URL (alias): `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443/`
 - Nextcloud local backend: `http://127.0.0.1:11000`
-- AIO admin panel: `https://127.0.0.1:8080`
-- OpenFang tailnet webhook/API: `https://wera-ss-pt-sn-1.tailfb390c.ts.net:4200`
-- Existing Odoo tailnet URL remains on default HTTPS port 443: `https://wera-ss-pt-sn-1.tailfb390c.ts.net`
-## Tailscale serve rules
-Expected `tailscale serve status` entries:
-- `https://wera-ss-pt-sn-1.tailfb390c.ts.net/` -> `http://127.0.0.1:8069` (Odoo)
-- `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443/` -> `http://127.0.0.1:11000` (Nextcloud)
+- AIO admin panel: `https://127.0.0.1:8080` (access via SSH tunnel: `ssh -N -L 8080:127.0.0.1:8080 wera@100.82.194.96`)
+- OpenFang tailnet: `https://wera-ss-pt-sn-1.tailfb390c.ts.net:4200`
+## Tailscale serve rules (as of 2026-08-18)
+`tailscale serve status` entries:
+- `https://wera-ss-pt-sn-1.tailfb390c.ts.net/` -> `http://localhost:11000` (Nextcloud — canonical; NC `overwrite.cli.url` uses this)
+- `https://wera-ss-pt-sn-1.tailfb390c.ts.net:8443/` -> `http://127.0.0.1:11000` (Nextcloud alias)
 - `https://wera-ss-pt-sn-1.tailfb390c.ts.net:4200/` -> `http://127.0.0.1:4200` (OpenFang)
+Note: `:443` **must always point to NC** as long as NC holds `overwrite.cli.url = https://.../`. Removing it causes a redirect loop to a closed port. Odoo has no active serve rule; re-add on a non-443 port when needed.
 ## Security binding
 `nextcloud-aio-apache` must bind only to loopback:
 - Expected port binding: `127.0.0.1:11000->11000/tcp`
@@ -100,15 +101,12 @@ Expected fields:
 - `installed: true`
 - `maintenance: false`
 - `needsDbUpgrade: false`
-Last verified version after the update/backup run:
-- `version`: `33.0.6.2`
-- `versionstring`: `33.0.6`
-Post datadir migration verification (2026-08-11):
-- `version`: `33.0.7.1`
-- `versionstring`: `33.0.7`
+Last verified version (2026-08-18):
+- `version`: `33.0.7.1` (`versionstring`: `33.0.7`)
 - `installed: true`, `maintenance: false`, `needsDbUpgrade: false`
 - ncdata bind source: `/mnt/nextcloud-data`
-- local + tailnet `:8443` `status.php` HTTP 200
+- `/login` HTTP 200 on loopback and tailnet
+- NC 33.0.8 update available; apply via AIO admin panel.
 ## Manual backup procedure
 AIO blocks direct admin login while `nextcloud-aio-apache` is running. For CLI-triggered backup operations, stop Apache first to unblock the local AIO panel login.
 1. Stop Apache temporarily:
@@ -214,8 +212,10 @@ The same runbook was published to the local Gitea wiki repository:
 ## Nextcloud app layer (2026-08-18)
 The following NC apps are installed and configured:
 - `filantropia_solar` 3.2.31 -- from FilantropiaSolar repo `custom_apps/`; configured with Prometheus + Spirit endpoints.
-- `integration_openai` 4.5.2 -- API URL `http://col-llama-cpp:8081` (Bonsai-4B-Q1_0 model via GPU).
+- `integration_openai` 4.5.2 -- API URL `http://col-llama-cpp:8081` (model `/models/Bonsai-4B-Q1_0.gguf` via GPU).
 - `assistant` 3.5.0 -- enabled, backed by integration_openai.
+- LLM service profile (verified 2026-08-19): image `local/llama.cpp:server-cuda-12.4.1-sm61`, `--ctx-size 16384 -ngl 999`, networks `city-of-light`+`nextcloud-aio`, host bind `127.0.0.1:8081`.
+- Integration scripts on host: `/data/city-of-light/ops/bootstrap/apply-nc-openai-llm.sh`, `build-llama-cuda-frank.sh`; overlay `ops/llm/docker-compose.llama-frank.yml`.
 - `files_antivirus` 6.4.0 -- daemon mode, host `nextcloud-aio-clamav:3310`, delete on infection.
 - `external` 8.0.1 -- sidebar links: Spirit, Prometheus, Cityview.
 - LLM bridge: `col-llama-cpp` connected to `nextcloud-aio` network (persisted in host compose `nextcloud-aio:` entry on llama-cpp service).
@@ -233,7 +233,7 @@ Full functional check passed. Evidence:
 | `status.php` (tailnet `:8443`) | same |
 | All AIO containers | healthy (13/13) incl. ClamAV |
 | `filantropia_solar` 3.2.31 | enabled |
-| `integration_openai` 4.5.2 | enabled; url=`http://col-llama-cpp:8081`; model=`Bonsai-4B-Q1_0` |
+| `integration_openai` 4.5.2 | enabled; url=`http://col-llama-cpp:8081`; model=`/models/Bonsai-4B-Q1_0.gguf`; GPU llama verified |
 | `assistant` 3.5.0 | enabled |
 | `files_antivirus` 6.4.0 | enabled; daemon mode; host=`nextcloud-aio-clamav`; port=3310 |
 | `external` 8.0.1 | enabled |

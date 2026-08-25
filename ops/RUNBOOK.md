@@ -102,6 +102,96 @@ curl -s -X POST http://localhost:4200/api/agents \
   - Spirit endpoint: `http://spirit:9105`
   - Rundeck endpoint: `http://rundeck:4440`
 
+## TRL4 outbound email (Nextcloud via Proton Bridge)
+Status (2026-08-19): **host stack installed** on Frank (`wera-ss-pt-sn-1`). Same architecture as TRL5.
+
+- Units active+enabled: `protonmail.service`, `protonmail-smtp-docker-proxy.service`
+- Package: `protonmail-bridge` `3.21.2-1` (deb under `/opt/`)
+- User: `protonmail` + `pass` keychain; start script `/home/protonmail/protonmail.sh`
+- Proxy script: `/usr/local/sbin/protonmail-smtp-docker-proxy.sh`
+- Listen: Bridge `127.0.0.1:1025`/`1143`; proxy on Docker gateways including `172.18.0.1:1025` (nextcloud-aio)
+- UFW: allow `172.16.0.0/12` -> host TCP `1025` (containers hit INPUT on bridge IPs)
+- Nextcloud non-secret SMTP set: host `172.18.0.1`, port `1025`, `tls`, auth true, from `cloud@wera.global`, streamoptions self-signed allow
+- Odoo: **not running** on Frank at install time; when restored, reuse TRL5 Odoo identity rules (alias domain bounce/catchall/default_from = `cloud`)
+- **Remaining operator step:** Bridge has **no account logged in yet**. Complete login + set NC SMTP password, then Admin email test.
+
+### Manual Bridge login + NC credentials (required)
+```
+ssh -t wera@192.168.1.71
+sudo -u protonmail tmux attach -t protonmail
+# Bridge CLI:
+login
+# Proton account + 2FA for the mailbox used on TRL5 (cloud@wera.global)
+list
+info 0
+# Ctrl-b then d
+sudo systemctl restart protonmail-smtp-docker-proxy.service
+docker exec nextcloud-aio-nextcloud php -r 'echo @fsockopen("172.18.0.1",1025,$e,$s,3)?"NC_OK\n":"NC_FAIL\n";'
+docker exec -u 33 nextcloud-aio-nextcloud php occ config:system:set mail_smtpname --value='SMTP_USER_FROM_INFO'
+docker exec -u 33 nextcloud-aio-nextcloud php occ config:system:set mail_smtppassword --value='SMTP_PASS_FROM_INFO'
+# Admin UI: Basic settings -> Email server -> Send email
+# NC send() empty array = success
+```
+
+Full TRL5 reference (return-path / Odoo invitation lessons): section **TRL5 outbound email** below / on branch `trl5`.
+
+## TRL4 llama.cpp / Nextcloud Assistant (GPU on Frank)
+Status (2026-08-19, **GPU verified**):
+
+### Working production profile
+- Container: `col-llama-cpp`
+- Image: `local/llama.cpp:server-cuda-12.4.1-sm61` (host-built)
+- Model: `/data/models/Bonsai-4B-Q1_0.gguf` -> `/models/Bonsai-4B-Q1_0.gguf`
+- Command: `-m /models/Bonsai-4B-Q1_0.gguf --host 0.0.0.0 --port 8081 --threads 4 --ctx-size 16384 --parallel 1 -ngl 999`
+- Networks: `city-of-light` + `nextcloud-aio`
+- Memory limit: 4G
+- Evidence when healthy:
+  - `curl -s http://127.0.0.1:8081/health` -> `{"status":"ok"}`
+  - `llama-server --list-devices` shows `CUDA0: NVIDIA GeForce GTX 1050 Ti`
+  - `nvidia-smi` shows `/app/llama-server` using ~3000 MiB VRAM
+  - NC reaches backend: `fsockopen("col-llama-cpp",8081)` OK
+  - NC apps: `assistant` + `integration_openai` URL `http://col-llama-cpp:8081`, model `/models/Bonsai-4B-Q1_0.gguf`
+
+### Why stock `server-cuda` failed
+- Rolling `ghcr.io/ggml-org/llama.cpp:server-cuda` ships CUDA **>=12.8** userland.
+- Frank driver **550.163.01** only exposes CUDA **12.4** -> `ggml_cuda_init: forward compatibility was attempted on non supported HW` and `-ngl` ignored (CPU fallback).
+- Older `server-cuda-b5700` sees GPU but cannot load Bonsai **Q1_0** (`invalid ggml type 41`).
+
+### Rebuild local CUDA image (if needed)
+```
+cd /data-bulk/build/llama.cpp   # shallow clone of ggml-org/llama.cpp
+docker build -t local/llama.cpp:server-cuda-12.4.1-sm61 --target server \
+  -f .devops/cuda.Dockerfile \
+  --build-arg CUDA_VERSION=12.4.1 \
+  --build-arg UBUNTU_VERSION=22.04 \
+  --build-arg CUDA_DOCKER_ARCH=61 \
+  --build-arg GCC_VERSION=11 .
+# then point host compose image to that tag and:
+sudo docker compose -f /data/city-of-light/docker-compose.yml up -d llama-cpp
+```
+
+### Assistant troubleshooting notes
+- Short chats can succeed even while large chatty-LLM prompts fail if `ctx-size` is only 4096 (overflow logs: request 5k-9k tokens).
+- Keep `default_completion_model_id` equal to server model id path `/models/Bonsai-4B-Q1_0.gguf`.
+- Do not `docker compose pull llama-cpp` without pinning image — latest `:server-cuda` will break GPU again on driver 550.
+
+### Integrate / re-wire Nextcloud stack
+Host paths (also in git under `ops/`):
+```
+# 1) Ensure GPU image exists
+bash /data/city-of-light/ops/bootstrap/build-llama-cuda-frank.sh
+# 2) Host compose llama-cpp must match ops/llm/docker-compose.llama-frank.yml
+#    (image local/..., nextcloud-aio network, 127.0.0.1:8081, ctx 16384, ngl 999)
+sudo docker compose -f /data/city-of-light/docker-compose.yml up -d llama-cpp
+# 3) Wire NC apps
+bash /data/city-of-light/ops/bootstrap/apply-nc-openai-llm.sh \
+  /data/city-of-light/ops/llm/nextcloud-openai.env.example
+# 4) Verify
+curl -s http://127.0.0.1:8081/health
+docker exec nextcloud-aio-nextcloud curl -sf http://col-llama-cpp:8081/health
+nvidia-smi  # expect /app/llama-server ~3GiB VRAM
+```
+
 ## Nextcloud AIO on TRL4
 Use `ops/NEXTCLOUD_AIO_TRL4.md` as the canonical runbook for the current TRL4 AIO deployment.
 

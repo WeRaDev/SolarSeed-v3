@@ -194,39 +194,47 @@ services:
     networks:
       - city_internal
 
+  # University LLM (Frank TRL4 verified profile lives on host compose as col-llama-cpp).
+  # Reference overlay: ops/llm/docker-compose.llama-frank.yml
+  # Build image: ops/bootstrap/build-llama-cuda-frank.sh
+  # NC wiring: ops/bootstrap/apply-nc-openai-llm.sh
   llama-cpp:
-    image: ghcr.io/ggml-org/llama.cpp:server
-    container_name: city-llama-cpp
+    image: ${LLAMA_IMAGE:-local/llama.cpp:server-cuda-12.4.1-sm61}
+    container_name: ${LLAMA_CONTAINER_NAME:-col-llama-cpp}
+    gpus: all
     restart: unless-stopped
     ports:
-      - "8081:8081"
+      - "${LLAMA_HOST_BIND:-127.0.0.1}:8081:8081"
     volumes:
-      - /data/models:/models:ro
+      - ${LLAMA_MODELS_DIR:-/data/models}:/models:ro
     command:
       - "-m"
-      - "${LLAMA_MODEL:-/models/qwen3-4b-q5_k_m.gguf}"
+      - "${LLAMA_MODEL:-/models/Bonsai-4B-Q1_0.gguf}"
       - "--host"
       - "0.0.0.0"
       - "--port"
       - "8081"
       - "--threads"
-      - "${LLAMA_THREADS:-8}"
+      - "${LLAMA_THREADS:-4}"
       - "--ctx-size"
-      - "${LLAMA_CTX_SIZE:-4096}"
+      - "${LLAMA_CTX_SIZE:-16384}"
       - "--parallel"
-      - "4"
+      - "${LLAMA_PARALLEL:-1}"
+      - "-ngl"
+      - "${LLAMA_N_GPU_LAYERS:-999}"
     deploy:
       resources:
         limits:
-          memory: 12G
+          memory: ${LLAMA_MEM_LIMIT:-4G}
         reservations:
-          memory: 8G
+          memory: ${LLAMA_MEM_RESERVE:-2G}
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8081/health || exit 1"]
       interval: 60s
       timeout: 10s
       retries: 3
       start_period: 120s
+    # On Frank host compose this service is always-on (no profile) and joins nextcloud-aio.
     profiles:
       - university
     networks:
