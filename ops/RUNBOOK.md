@@ -364,3 +364,53 @@ STT smoke: any short wav/mp3 via `POST /v1/audio/transcriptions` with `model=whi
 - Do not delete `/models` or backends volumes during repair.
 - Host `:8080` is AIO mastercontainer, not LocalAI.
 - No separate Ollama/`llama-server` was required for this Nextcloud Assistant path on TRL5.
+
+## TRL4 Frank containerd storage migration (2026-08-29)
+
+Station: **Frank** (`wera-ss-pt-sn-1`, TRL4 lab).
+
+### Symptom
+- `/` fills toward 70–85% even after Docker `data-root` is `/data-bulk/docker`.
+- `du -x /` undercounts relative to `df -h /`.
+- Root cause: **containerd** still stores images/snapshots at `/var/lib/containerd` (~50 GiB).
+
+### Required layout
+| Runtime | Config | Path |
+|---|---|---|
+| Docker Engine | `/etc/docker/daemon.json` `data-root` | `/data-bulk/docker` |
+| containerd | `/etc/containerd/config.toml` `root` | `/data-bulk/containerd` |
+
+### Correct systemd mount guard
+Create `/etc/systemd/system/containerd.service.d/20-data-bulk-mount-guard.conf`:
+
+```ini
+[Unit]
+ConditionPathIsMountPoint=/data-bulk
+RequiresMountsFor=/data-bulk
+```
+
+**Do not** use `Requires=data-bulk.mount`. systemd encodes `/data-bulk` as `data\x2dbulk.mount`. The wrong unit name leaves `containerd` inactive and `docker` stuck in `activating`.
+
+### Recovery / validation
+```bash
+sudo systemctl daemon-reload
+sudo systemctl stop docker.socket docker.service || true
+sudo systemctl reset-failed containerd.service || true
+sudo systemctl start containerd.service
+sudo systemctl start docker.service
+systemctl is-active containerd docker
+docker info --format 'Root={{.DockerRootDir}}'
+grep -E '^root' /etc/containerd/config.toml
+docker ps
+sudo du -sh /data-bulk/containerd /var/lib/containerd
+df -h / /data-bulk
+```
+
+### Cleanup old root copy
+Only after containers are healthy:
+```bash
+sudo rm -rf /var/lib/containerd/*
+df -h /
+```
+
+Full narrative: SolarCity `docs/Research/CITY_OF_LIGHT_TRL4_RESEARCH_REPORT.md` (Root disk remediation + Appendix A).
