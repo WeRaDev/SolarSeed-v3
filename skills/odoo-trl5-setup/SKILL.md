@@ -76,3 +76,6 @@ Return:
 - Applied commit hash and TRL5 workspace path.
 - Preflight, apply, and validation outcomes.
 - Remaining blockers and next minimal action.
+
+## Multi-website dump restore on TRL
+When restoring Online/multi-brand dumps on TRL4/TRL5, follow **`odoo-trl4-restore-operations`** phases 0–7 (homepage wire, menus, header/footer chrome, rewrite scope, companies, edge). Do not treat “homepage 200” as success without chrome/menu/rewrite acceptance checks.
